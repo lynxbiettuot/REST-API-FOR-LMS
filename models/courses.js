@@ -3,20 +3,26 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const courseSchema = new Schema({
-    name: {
+    title: {
         type: String,
         required: true
     },
+    description: {
+        type: String,
+        required: true
+    },
+    instructor: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Instruction',
+        required: true
+    },
+    student:
+        [{
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'Student',
+        }],
     price: {
-        type: String,
-        required: true
-    },
-    lecture: {
-        type: String,
-        required: true
-    },
-    url: {
-        type: String,
+        type: Number,
         required: true
     }
 });
