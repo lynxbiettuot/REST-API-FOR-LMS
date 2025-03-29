@@ -7,18 +7,18 @@ const router = express.Router();
 const courseManaging = require("../../controllers/admin/course.js");
 
 //get full course
-router.get('/course', courseManaging.getFullCourse);
+router.get('/', courseManaging.getFullCourse);
 
 //get a course
-router.get('/course/:courseId', courseManaging.getCourseDetail);
+router.get('/:courseId', courseManaging.getCourseDetail);
 
 //create a course
-router.post('/course/create-course', courseManaging.createCourse);
+router.post('/create-course', courseManaging.createCourse);
 
 //edit a course
-router.put('/course/edit-course/:courseId', courseManaging.updateCourse);
+router.put('/edit-course/:courseId', courseManaging.updateCourse);
 
 //delete a course
-router.delete('/course/delete-course/:courseId', courseManaging.deleteCourse);
+router.delete('/delete-course/:courseId', courseManaging.deleteCourse);
 
 module.exports = router;
