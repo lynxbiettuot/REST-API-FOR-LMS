@@ -15,7 +15,7 @@ const instructorSchema = new Schema({
         type: String,
         required: true
     },
-    createdCourse: [{ type: mongoose.Types.ObjectId }],
+    createdCourse: [{ type: mongoose.Types.ObjectId, required: true, ref: 'Course' }],
 })
 
 module.exports = mongoose.model('Instruction', instructorSchema);

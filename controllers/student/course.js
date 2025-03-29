@@ -10,7 +10,7 @@ exports.getFullCourse = (req, res, next) => {
 }
 
 
-//update a course
+//get a course
 exports.getCourseDetail = (req, res, next) => {
     const courseId = req.params.courseId;
     Course.findById(courseId).then(result => {
