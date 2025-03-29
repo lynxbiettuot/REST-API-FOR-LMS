@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 //Model
 const Instruction = require('../../models/instruction.js');
 const Admin = require('../../models/admin.js');
+const Course = require('../../models/courses.js');
 
 //get full Instructor
 exports.getFullInstructor = async (req, res, next) => {
@@ -89,18 +90,18 @@ exports.editAnInstruction = async (req, res, next) => {
 //delete an Instructor
 exports.deleteInstructor = async (req, res, next) => {
     try {
-        const instructorId = req.params.id;
-        const instructor = await Instruction.findById(req.params.id);
+        const instructorId = req.params.instructorId;
+        const instructor = await Instruction.findById(req.params.instructorId);
         if (!instructor) {
             return res.status(404).json({ message: "Instructor not found" });
         }
 
         await Course.updateMany(
-            { instructor: req.params.id },
-            { $unset: { instructor: "" } }
+            { instructor: instructorId },
+            { $unset: { instructor: null } }
         );
 
-        await Instruction.findByIdAndDelete(req.params.id);
+        await Instruction.findByIdAndDelete(instructorId);
 
         await Admin.updateOne(
             {},
