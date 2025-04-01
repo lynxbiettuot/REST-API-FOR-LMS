@@ -28,6 +28,7 @@ const studentRoutes = require('./routes/student/student.js');
 //Admin
 const managingCourseAdmin = require('./routes/admin/manageCourse.js');
 const managingInstructor = require('./routes/admin/manageInstructor.js');
+const managingStudent = require('./routes/admin/manageStudent.js');
 
 app.get('/', (req, res, next) => {
     // try {
@@ -70,6 +71,7 @@ app.use("/student", studentRoutes);
 // admin
 app.use("/admin/course", managingCourseAdmin);
 app.use("/admin/instructor", managingInstructor);
+app.use('/admin/student', managingStudent);
 
 mongoose.connect(MONGODB_URL).then(result => {
     app.listen(3000, () => {
