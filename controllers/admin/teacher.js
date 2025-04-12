@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const Instruction = require('../../models/instruction.js');
 const Admin = require('../../models/admin.js');
 const Course = require('../../models/courses.js');
+const User = require('../../models/users.js');
 
 //get full Instructor
 exports.getFullInstructor = async (req, res, next) => {
@@ -56,6 +57,14 @@ exports.addNewInstructor = async (req, res, next) => {
             { new: true }
         );
 
+        //save to user model
+        const newUser = new User({
+            email: email,
+            password: password,
+            role: "Instructor"
+        })
+        await newUser.save();
+
         res.status(201).json({ "statusCode": 201, "message": "Created", "data": newInstructor });
     } catch (error) {
         console.log(error);
@@ -67,18 +76,32 @@ exports.addNewInstructor = async (req, res, next) => {
 exports.editAnInstruction = async (req, res, next) => {
     try {
         const instructorId = req.params.instructorId;
-
         const currentInstructor = await Instruction.findById(instructorId);
+
         if (!currentInstructor) {
-            return res.status(404).json({ "message": "Not found" });
+            return res.status(404).json({ "message": "Instructor not found" });
+        }
+        const currentEmail = currentInstructor.email;
+        const currentUser = await User.findOne({ email: currentEmail.trim() });
+
+        if (!currentUser) {
+            return res.status(404).json({ "message": "User not found" });
         }
         const data = req.body;
         const newEmail = data.email;
         const newPassword = data.password;
         const newName = data.name;
+
         currentInstructor.name = newName;
         currentInstructor.email = newEmail;
         currentInstructor.password = newPassword;
+
+        currentUser.email = newEmail;
+        currentUser.password = newPassword;
+
+        //save in user model
+        await currentUser.save();
+
         const updateData = await currentInstructor.save();
         res.status(200).json({ "statusCode": 200, "message": "updated!", "data": updateData });
     } catch (error) {
@@ -95,6 +118,14 @@ exports.deleteInstructor = async (req, res, next) => {
         if (!instructor) {
             return res.status(404).json({ message: "Instructor not found" });
         }
+
+        const currentEmail = instructor.email;
+        const currentUser = await User.findOne({ email: currentEmail.trim() });
+        if (!currentUser) {
+            return res.status(404).json({ "message": "Account not found" });
+        }
+
+        await User.deleteOne({ email: currentUser.email.trim() });
 
         await Course.updateMany(
             { instructor: instructorId },
