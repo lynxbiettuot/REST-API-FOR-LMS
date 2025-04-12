@@ -1,13 +1,14 @@
 const express = require('express');
 const mongoose = require('mongoose');
-const { ObjectId } = require('mongodb');
 
-const bodyParser = require('body-parser')
+const bodyParser = require('body-parser');
+const cookieParser = require('cookie-parser');
 
 const app = express();
 
 // parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: true }))
+app.use(cookieParser());
 
 // parse application/json
 app.use(bodyParser.json())
@@ -30,37 +31,21 @@ const managingCourseAdmin = require('./routes/admin/manageCourse.js');
 const managingInstructor = require('./routes/admin/manageInstructor.js');
 const managingStudent = require('./routes/admin/manageStudent.js');
 
+//authentication
+const authRoutes = require('./routes/auth/auth.js');
+
+app.use((req, res, next) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-type, Authorization');
+    next();
+});
+
 app.get('/', (req, res, next) => {
-    // try {
-    //     const name = 'Admin demo';
-    //     const email = 'Admin email';
-    //     const password = 'Admin password';
-    //     const x = new mongoose.Types.ObjectId("67e51b39bcfb1944ea3ed088");
-    //     const y = new mongoose.Types.ObjectId("67e5269187897410741b0376");
-    //     const fullCourse = [];
-    //     fullCourse.push(x);
-    //     fullCourse.push(y);
-    //     const z = new mongoose.Types.ObjectId("67e5191106151ec3dd1ccd3f");
-    //     const instructor = [];
-    //     instructor.push(z);
-    //     const t = new mongoose.Types.ObjectId("67e51a131161d5d170f9525b");
-    //     const student = [];
-    //     student.push(t);
-    //     const newAdmin = new Admin({
-    //         name: name,
-    //         email: email,
-    //         password: password,
-    //         fullCourse: fullCourse,
-    //         instructor: instructor,
-    //         student: student,
-    //     })
-    //     await newAdmin.save();
-    //     res.json({ "accout": newAdmin });
-    // } catch (err) {
-    //     console.log(err);
-    // }
     res.json({ "message": "Okay" });
 })
+//authenticate
+app.use('/auth', authRoutes);
 
 //teacher
 app.use("/teacher", teacherRoutes);
