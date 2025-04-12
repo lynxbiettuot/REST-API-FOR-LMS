@@ -15,6 +15,10 @@ const instructorSchema = new Schema({
         type: String,
         required: true
     },
+    phoneNumber: {
+        type: String,
+        require: true
+    },
     createdCourse: [{ type: mongoose.Types.ObjectId, ref: 'Course', required: true }],
 })
 

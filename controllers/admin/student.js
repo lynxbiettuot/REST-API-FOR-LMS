@@ -29,7 +29,7 @@ exports.getStudent = async (req, res, next) => {
         }
         res.status(200).json({ "message": "Completed!", "statusCode": 200, "studentData": currentStudent });
     } catch (err) {
-        console.log(error);
+        console.log(err);
         res.status(500).json({ "message": "Internal server!" });
     }
 }
