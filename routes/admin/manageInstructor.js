@@ -14,11 +14,11 @@ router.get('/', isAuth, instructorManaging.getFullInstructor);
 //get an instruction
 router.get('/:instructorId', isAuth, instructorManaging.getAnInstructor)
 
-//edit an instruction
-router.put('/update-instructor/:instructorId', isAuth, instructorManaging.editAnInstruction);
-
 //create an instruction
 router.post('/create-instructor', isAuth, instructorManaging.addNewInstructor);
+
+//edit an instruction
+router.put('/update-instructor/:instructorId', isAuth, instructorManaging.editAnInstruction);
 
 //delete an instruction
 router.delete('/delete-instructor/:instructorId', isAuth, instructorManaging.deleteInstructor);

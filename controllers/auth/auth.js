@@ -1,10 +1,12 @@
 const bcrypt = require('bcrypt');
 
+//matkhau dat chung la 09012004
+
 //Model
 const Student = require('../../models/student.js');
 const Instructor = require('../../models/instruction.js');
 const Admin = require('../../models/admin.js');
-const instruction = require('../../models/instruction.js');
+const User = require('../../models/users.js');
 
 const jwt = require('jsonwebtoken');
 
@@ -22,11 +24,9 @@ exports.signup = async (req, res, next) => {
         const role = req.body.role;
         const adminId = "67e6fcf4c2de2359117877a1";
 
-        const curObj = { email: email };
+        const existUser = await User.findOne({ email: email.trim() });
 
-        const existStudent = await Student.findOne(curObj);
-        const existInstructor = await instruction.findOne(curObj);
-        if (existInstructor || existStudent) {
+        if (existUser) {
             return res.status(400).json({ "message": "Account had already existed!", "statusCode": 400 });
         }
 
@@ -36,6 +36,15 @@ exports.signup = async (req, res, next) => {
         //hashing
         const hashedPassword = await bcrypt.hash(password, 12);
         let dataReply = null;
+
+        const newUser = new User({
+            email: email,
+            password: hashedPassword,
+            role: role
+        })
+
+        await newUser.save();
+
         if (role === "Student") {
             const newStudent = new Student({
                 name: fullName,
@@ -76,76 +85,50 @@ exports.signup = async (req, res, next) => {
 exports.login = async (req, res, next) => {
     const userEmail = req.body.email;
     const userPassword = req.body.password;
-    console.log(process.env.ACCESS_TOKEN_SECRET);
-    console.log(process.env.REFRESH_TOKEN_SECRET);
-    let canFind = 0;
     console.log(req.body);
     //find in Instructor model
-    let currentInstructor = await Instructor.findOne({ email: userEmail });
-    if (currentInstructor) {
-        let isEqual = await bcrypt.compare(userPassword, currentInstructor.password);
-        if (isEqual) {
-            canFind = 1;
-            const accessToken = jwt.sign(
-                {
-                    email: currentInstructor.email,
-                    userId: currentInstructor._id.toString()
-                },
-                process.env.ACCESS_TOKEN_SECRET,
-                { expiresIn: '1h' }
-            );
-
-            const refreshToken = jwt.sign(
-                {
-                    email: currentInstructor.email,
-                    userId: currentInstructor._id.toString()
-                },
-                process.env.REFRESH_TOKEN_SECRET,
-                { expiresIn: '1d' }
-            );
-            // Assigning refresh token in http-only cookie 
-            res.cookie('jwt', refreshToken, {
-                httpOnly: true,
-                sameSite: 'None', secure: true,
-                maxAge: 24 * 60 * 60 * 1000
-            });
-            return res.status(200).json({ "message": "success", "statusCode": 200, "accessToken": accessToken, "refreshToken": refreshToken, "userData": currentInstructor, "role": "Instructor" });
-        }
+    let currentUser = await User.findOne({ email: userEmail.trim() });
+    if (!currentUser) {
+        return res.status(404).json({ "message": "Account not found!", "statusCode": 404 });
     }
+    let isEqual = await bcrypt.compare(userPassword, currentUser.password);
+    if (isEqual) {
+        const accessToken = jwt.sign(
+            {
+                email: currentUser.email,
+                userId: currentUser.password.toString(),
+                role: currentUser.role
+            },
+            process.env.ACCESS_TOKEN_SECRET,
+            { expiresIn: '1h' }
+        );
 
-    //find in Strudent Model
-    let currentStudent = await Student.findOne({ email: userEmail });
-    if (currentStudent) {
-        let isEqual = await bcrypt.compare(userPassword, currentStudent.password);
-        if (isEqual) {
-            canFind = 1;
-            const accessToken = jwt.sign(
-                {
-                    email: currentStudent.email,
-                    userId: currentStudent._id.toString()
-                },
-                process.env.ACCESS_TOKEN_SECRET,
-                { expiresIn: '1h' }
-            );
-
-            const refreshToken = jwt.sign(
-                {
-                    email: currentStudent.email,
-                    userId: currentStudent._id.toString()
-                },
-                process.env.REFRESH_TOKEN_SECRET,
-                { expiresIn: '1d' }
-            );
-            // Assigning refresh token in http-only cookie 
-            res.cookie('jwt', refreshToken, {
-                httpOnly: true,
-                sameSite: 'None', secure: true,
-                maxAge: 24 * 60 * 60 * 1000
-            });
-            return res.status(200).json({ "message": "success", "statusCode": 200, "accessToken": accessToken, "refreshToken": refreshToken, "userData": currentStudent, "role": "Student" });
+        const refreshToken = jwt.sign(
+            {
+                email: currentUser.email,
+                userId: currentUser.password.toString(),
+                role: currentUser.role
+            },
+            process.env.REFRESH_TOKEN_SECRET,
+            { expiresIn: '1d' }
+        );
+        // Assigning refresh token in http-only cookie 
+        res.cookie('jwt', refreshToken, {
+            httpOnly: true,
+            sameSite: 'None', secure: true,
+            maxAge: 24 * 60 * 60 * 1000
+        });
+        const role = currentUser.role;
+        let userData;
+        if (role === "Instructor") {
+            userData = await Instructor.findOne({ email: currentUser.email.trim() });
+        } else if (role === "Student") {
+            userData = await Student.findOne({ email: currentUser.email.trim() });
+        } else if (role === "Admin") {
+            userData = await Admin.findOne({ email: currentUser.email.trim() });
         }
+        return res.status(200).json({ "message": "success", "statusCode": 200, "accessToken": accessToken, "refreshToken": refreshToken, "userData": userData, "role": currentUser.role });
     }
-    return res.status(404).json({ "message": "Account not found!", "statusCode": 404 });
 }
 
 //get access token via refresh token
