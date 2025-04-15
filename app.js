@@ -41,7 +41,16 @@ app.use((req, res, next) => {
     next();
 });
 
-app.get('/', (req, res, next) => {
+app.get('/', async (req, res, next) => {
+    // const newAdmin = new Admin({
+    //     name: "Admin 2",
+    //     email: "admin2@gmail.com",
+    //     password: "09012004",
+    //     fullCourse: [],
+    //     instructor: [],
+    //     student: []
+    // })
+    // await newAdmin.save();
     res.json({ "message": "Okay" });
 })
 //authenticate

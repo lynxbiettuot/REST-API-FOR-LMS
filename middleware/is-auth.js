@@ -19,5 +19,9 @@ module.exports = async (req, res, next) => {
     if (!decodedToken) {
         return res.status(401).json({ "message": "Not authenticated!" });
     }
+    const userRole = decodedToken.role;
+    const userEmail = decodedToken.email;
+    req.userRole = userRole;
+    req.userEmail = userEmail
     next();
 }

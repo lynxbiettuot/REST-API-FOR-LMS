@@ -76,6 +76,7 @@ exports.updateCourse = async (req, res, next) => {
 exports.deleteCourse = async (req, res, next) => {
     try {
         const courseId = req.params.courseId;
+        //Add a step to find creator by courseId
 
         await Instruction.updateMany(
             { createdCourse: courseId },
