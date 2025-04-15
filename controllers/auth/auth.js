@@ -85,7 +85,6 @@ exports.signup = async (req, res, next) => {
 exports.login = async (req, res, next) => {
     const userEmail = req.body.email;
     const userPassword = req.body.password;
-    console.log(req.body);
     //find in Instructor model
     let currentUser = await User.findOne({ email: userEmail.trim() });
     if (!currentUser) {

@@ -7,6 +7,9 @@ const courseController = require('../../controllers/teacher/course.js');
 
 const isAuth = require('../../middleware/is-auth.js');
 
+//Autorization
+const authorize = require('../../middleware/rbac.js');
+
 //get full course
 router.get('/teaching', isAuth, courseController.getFullCourse);
 
@@ -14,12 +17,12 @@ router.get('/teaching', isAuth, courseController.getFullCourse);
 router.get('/teaching/:courseId', isAuth, courseController.getCourse);
 
 //create post
-router.post('/teaching/create-course', isAuth, courseController.createCourse);
+router.post('/teaching/create-course', isAuth, authorize(['course:create']), courseController.createCourse);
 
 //update course
-router.put('/teaching/update-course/:courseId', isAuth, courseController.updateCourse);
+router.put('/teaching/update-course/:courseId', isAuth, authorize(['course:update:own']), courseController.updateCourse);
 
 //delete course
-router.delete('/teaching/delete-course/:courseId', isAuth, courseController.deleteCourse);
+router.delete('/teaching/delete-course/:courseId', isAuth, authorize(['course:delete:own']), courseController.deleteCourse);
 
 module.exports = router;
