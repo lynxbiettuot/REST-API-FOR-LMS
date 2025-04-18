@@ -27,7 +27,7 @@ exports.getCourse = (req, res, next) => {
 exports.createCourse = async (req, res, next) => {
     try {
         console.log(req.body);
-        const instructorId = new mongoose.Types.ObjectId("67e5191106151ec3dd1ccd3f");
+        const instructorId = new mongoose.Types.ObjectId("67fac9939ed2c8e69fa3bd58");
 
         const newCourse = new Course({
             title: req.body.title,

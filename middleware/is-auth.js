@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const { Instructor } = require('../config/roles');
 
 
 //config to use .env variable
@@ -22,6 +23,6 @@ module.exports = async (req, res, next) => {
     const userRole = decodedToken.role;
     const userEmail = decodedToken.email;
     req.userRole = userRole;
-    req.userEmail = userEmail
+    req.userEmail = userEmail;
     next();
 }
