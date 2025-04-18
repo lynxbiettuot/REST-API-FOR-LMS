@@ -25,6 +25,8 @@ const Admin = require('./models/admin.js');
 const teacherRoutes = require('./routes/teacher/courses.js');
 //student Routes 
 const studentRoutes = require('./routes/student/student.js');
+//Course router
+const courseRouter = require('./routes/courses/course.js');
 
 //Admin
 const managingCourseAdmin = require('./routes/admin/manageCourse.js');
@@ -42,19 +44,13 @@ app.use((req, res, next) => {
 });
 
 app.get('/', async (req, res, next) => {
-    // const newAdmin = new Admin({
-    //     name: "Admin 2",
-    //     email: "admin2@gmail.com",
-    //     password: "09012004",
-    //     fullCourse: [],
-    //     instructor: [],
-    //     student: []
-    // })
-    // await newAdmin.save();
-    res.json({ "message": "Okay" });
+    return res.json({ "message": "Hello World" });
 })
 //authenticate
 app.use('/auth', authRoutes);
+
+//course router
+app.use('/courses', courseRouter);
 
 //teacher
 app.use("/teacher", teacherRoutes);
