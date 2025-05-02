@@ -1,4 +1,37 @@
 const bcrypt = require('bcrypt');
+//random number
+const crypto = require('crypto');
+//send mail
+const nodemailer = require('nodemailer');
+
+//create transporter for sending email
+const transporter = nodemailer.createTransport({
+    host: "smtp.gmail.com",
+    port: 587,
+    secure: false, // true for port 465, false for other ports
+    auth: {
+        user: "hoangvlinh09012004@gmail.com",
+        pass: "petd tgkw ekmc skpf",
+    },
+});
+
+//function to send mail
+async function sendOtpNotification(userEmail, user) {
+    const mailOptions = {
+        from: "hoangvlinh09012004@gmail.com",
+        to: userEmail,
+        subject: "OTP to reset password",
+        text: `Your OTP password is ${user.resetOtp}.
+        Do not share your OTP with anyone else.Validation code will expire in 5 minutes`
+    };
+
+    try {
+        await transporter.sendMail(mailOptions);
+        console.log('OTP email send to:', userEmail);
+    } catch (err) {
+        console.log(err);
+    }
+}
 
 //matkhau dat chung la 09012004
 
@@ -157,5 +190,84 @@ exports.getAccessToken = async (req, res, next) => {
         })
     } else {
         return res.status(406).json({ message: 'Unauthorized' });
+    }
+}
+
+//send OTP via email
+exports.handleSendOtp = async (req, res, next) => {
+    try {
+        const email = req.body.email;
+
+        const otp = crypto.randomInt(1000, 9999);
+        const currentUser = await User.findOne({ email: email });
+        if (!currentUser) {
+            return res.status(404).json({ "message": "Account is not exist!" });
+        }
+        currentUser.resetOtp = otp;
+        //expire after 5 minutes
+        currentUser.otpExpiry = Date.now() + 5 * 60 * 1000
+        await currentUser.save();
+
+        //send OTP
+        sendOtpNotification(email, currentUser);
+
+        //send notification to user
+        return res.json({ "message": "OTP has sent to your email!", "email": email });
+    } catch (err) {
+        console.log(err);
+        return res.status(500).json({ "message": "Internal server error!" })
+    }
+}
+
+//verify OTP and handle reset password
+exports.handleVerifyOtpAndResetPassword = async (req, res, next) => {
+    try {
+        const email = req.body.email;
+        const otpVerify = req.body.otpVerify;
+        const newPassword = req.body.newPassword;
+        const confirmNewPassword = req.body.confirmNewPassword;
+
+        const currentUser = await User.findOne({ email: email });
+        if (!currentUser) {
+            return res.status(404).json({ "message": "Account is not exist!" });
+        }
+
+        //check if OTP is expired!
+        if (Date.now() > currentUser.otpExpiry) {
+            return res.status(401).json({ "message": "OTP is expired!" });
+        }
+
+        //check if OTP is not valid
+        if (currentUser.resetOtp !== otpVerify) {
+            return res.status(401).json({ "message": "OTP is not valid!" });
+        }
+
+        //check if new password and confirm password is not valid
+        if (confirmNewPassword !== newPassword) {
+            return res.status(401).json({ "message": "Password did not match!" });
+        }
+
+        const currentRole = currentUser.role;
+        let dataUser;
+        if (currentRole === "Instructor") {
+            dataUser = await Instructor.findOne({ email: email });
+        } else if (currentRole === "Student") {
+            dataUser = await Student.findOne({ email: email });
+        }
+        console.log(dataUser);
+        //update information if pass
+        const hashedPassword = await bcrypt.hash(newPassword, 12);
+        dataUser.password = hashedPassword;
+
+        currentUser.password = hashedPassword;
+        currentUser.resetOtp = undefined;
+        currentUser.otpExpiry = undefined;
+
+        await dataUser.save();
+        await currentUser.save();
+        return res.status(200).json({ "message": "Password is changed!" });
+    } catch (error) {
+        console.log(error)
+        return res.status(500).json({ "message": "Internal server error!" });
     }
 }
