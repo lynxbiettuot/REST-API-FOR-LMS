@@ -14,6 +14,12 @@ const userSchema = new Schema({
     role: {
         type: String,
         required: true
+    },
+    resetOtp: {
+        type: String
+    },
+    otpExpiry: {
+        type: Date
     }
 })
 

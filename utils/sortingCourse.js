@@ -11,7 +11,6 @@ const sortByCriterial = (name, order) => {
                     ? a.title.localeCompare(b.title)
                     : b.title.localeCompare(a.title);
             };
-        // Thêm các tiêu chí khác nếu cần
         default:
             return () => 0; // Nếu không có tiêu chí sort, trả về hàm mặc định không làm gì
     }
