@@ -19,6 +19,9 @@ const studentSchema = new Schema({
         type: String,
         require: true
     },
+    avatarUrl: {
+        type: String,
+    },
     course: [{
         type: mongoose.Types.ObjectId,
         ref: 'Course',
