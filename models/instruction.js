@@ -19,6 +19,12 @@ const instructorSchema = new Schema({
         type: String,
         require: true
     },
+    avatarUrl: {
+        type: String
+    },
+    description: {
+        type: String
+    },
     createdCourse: [{ type: mongoose.Types.ObjectId, ref: 'Course', required: true }],
 })
 

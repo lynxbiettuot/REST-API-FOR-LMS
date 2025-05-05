@@ -23,8 +23,10 @@ const Admin = require('./models/admin.js');
 
 //manage course by lecturer
 const teacherRoutes = require('./routes/teacher/courses.js');
+const teacherProfileRoutes = require('./routes/teacher/teacher-profile.js');
 //student Routes 
 const studentRoutes = require('./routes/student/student.js');
+const studentProfileRoutes = require('./routes/student/student-profile.js');
 //Course router
 const courseRouter = require('./routes/courses/course.js');
 
@@ -54,9 +56,11 @@ app.use('/courses', courseRouter);
 
 //teacher
 app.use("/teacher", teacherRoutes);
+app.use('/teacher/profile', teacherProfileRoutes);
 
 //student
 app.use("/student", studentRoutes);
+app.use("/student/profile", studentProfileRoutes)
 
 // admin
 app.use("/admin/course", managingCourseAdmin);

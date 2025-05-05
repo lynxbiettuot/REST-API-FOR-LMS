@@ -48,7 +48,6 @@ require('dotenv').config();
 //signup
 exports.signup = async (req, res, next) => {
     try {
-        console.log(req.body);
         const email = req.body.email;
         const password = req.body.password;
         const confrimPassword = req.body.confirmPassword;
@@ -58,7 +57,6 @@ exports.signup = async (req, res, next) => {
         const adminId = "67e6fcf4c2de2359117877a1";
 
         const existUser = await User.findOne({ email: email.trim() });
-
         if (existUser) {
             return res.status(400).json({ "message": "Account had already existed!", "statusCode": 400 });
         }
