@@ -1,5 +1,9 @@
 const jwt = require('jsonwebtoken');
-const { Instructor } = require('../config/roles');
+
+//model
+const Student = require('../models/student.js');
+const Instructor = require('../models/instruction.js');
+const Admin = require('../models/admin.js');
 
 
 //config to use .env variable
@@ -25,5 +29,17 @@ module.exports = async (req, res, next) => {
     const userEmail = decodedToken.email;
     req.userRole = userRole;
     req.userEmail = userEmail;
+
+    // get infor base on role
+    if (role === 'Student') {
+        const student = await Student.findOne({ email: userEmail });
+        req.stuId = student ? student._id : null;
+    } else if (role === 'Instructor') {
+        const instructor = await Instructor.findOne({ email: userEmail });
+        req.instId = instructor ? instructor._id : null;
+    } else if (role === 'Admin') {
+        const admin = await Admin.findOne({ email: userEmail });
+        req.adminId = admin ? admin._id : null;
+    }
     next();
 }
