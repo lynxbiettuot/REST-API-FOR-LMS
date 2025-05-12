@@ -31,13 +31,13 @@ module.exports = async (req, res, next) => {
     req.userEmail = userEmail;
 
     // get infor base on role
-    if (role === 'Student') {
+    if (userRole === 'Student') {
         const student = await Student.findOne({ email: userEmail });
         req.stuId = student ? student._id : null;
-    } else if (role === 'Instructor') {
+    } else if (userRole === 'Instructor') {
         const instructor = await Instructor.findOne({ email: userEmail });
         req.instId = instructor ? instructor._id : null;
-    } else if (role === 'Admin') {
+    } else if (userRole === 'Admin') {
         const admin = await Admin.findOne({ email: userEmail });
         req.adminId = admin ? admin._id : null;
     }

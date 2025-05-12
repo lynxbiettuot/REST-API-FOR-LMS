@@ -4,6 +4,49 @@ const Course = require('../../models/courses.js');
 const Admin = require('../../models/admin.js');
 const Instruction = require('../../models/instruction.js');
 const Student = require('../../models/student.js');
+const Video = require('../../models/video.js');
+
+//aws
+const {
+    S3Client,
+    PutObjectCommand,
+    CreateBucketCommand,
+    DeleteObjectCommand,
+    DeleteBucketCommand,
+    paginateListObjectsV2,
+    GetObjectCommand,
+} = require("@aws-sdk/client-s3");
+
+//function to handle upload video
+async function handleUpdateFile(req, bucketName, currentTime) {
+    //created an user for S3 service
+    const s3Client = new S3Client({});
+
+    //create AWS bucket
+    // await s3Client.send(
+    //     new CreateBucketCommand({
+    //         Bucket: bucketName,
+    //     }),
+    // );
+
+    //put an object to AWS bucket
+    await s3Client.send(
+        new PutObjectCommand({
+            Bucket: bucketName,
+            Key: `${currentTime}-${req.file.originalname}`,
+            Body: req.file.buffer,
+            ContentType: req.file.mimetype,
+            ContentDisposition: 'inline',
+        }),
+    );
+}
+
+//function to delete video
+async function handleDeleteFile(req, bucketName, videoTime) {
+    const s3Client = new S3Client({});
+    const bucketParams = { Bucket: `${bucketName}`, Key: `${videoTime}` };
+    await s3Client.send(new DeleteObjectCommand(bucketParams));
+}
 
 //getFull Course
 exports.getFullCourse = (req, res, next) => {
@@ -26,9 +69,11 @@ exports.getCourseDetail = (req, res, next) => {
 //create a course
 exports.createCourse = async (req, res, next) => {
     try {
-        console.log(req.body);
-        const adminId = new mongoose.Types.ObjectId("67e6fcf4c2de2359117877a1");
-        const instructorId = new mongoose.Types.ObjectId("67e5191106151ec3dd1ccd3f");
+        //only one Admin
+        if (!req.adminId) {
+            return res.status(401).json({ "message": "Admin is not exist to create course!" });
+        }
+        const adminId = req.adminId;
 
         const newCourse = new Course({
             title: req.body.title,
@@ -57,6 +102,9 @@ exports.updateCourse = async (req, res, next) => {
     try {
         const courseId = req.params.courseId;
         const updateCourse = await Course.findById(courseId);
+        if (!updateCourse) {
+            return res.status(404).json({ "message": "Course is not found!" });
+        }
         const data = req.body;
 
         const newTile = data.title;
@@ -75,11 +123,98 @@ exports.updateCourse = async (req, res, next) => {
     }
 }
 
+//Admin edit a video in a course base on course Id
+exports.editAVideo = async (req, res, next) => {
+    const videoId = req.params.videoId;
+    const courseId = req.params.courseId;
+    const currentCourse = await Course.findById(courseId);
+    // if (req.userRole != "Admin" && currentCourse.instructor.toString() !== req.instId.toString()) {
+    //     return res.status(401).json({ "message": "Not permitted to edit video" });
+    // }
+    if (req.userRole === "Admin" || currentCourse.instructor.toString() === req.instId.toString()) {
+        const videoId = req.params.videoId;
+        //new information to edit video
+        const titleVideo = req.body.titleVideo;
+        const videoURL = req.file;
+        const videoDescription = req.body.videoDescription;
+
+        const currentVideo = await Video.findById(videoId);
+        if (!currentVideo) {
+            return res.status(404).json({ "message": "Not found video!" });
+        }
+        let videoUrl = undefined;
+        if (videoURL) {
+            const bucketName = 'videosbucket-01';
+
+            //delete item on bucket
+            const keyObject = currentVideo.urlVideo.split('.amazonaws.com/')[1];
+            const currentTime = Date.now();
+            handleDeleteFile(req, bucketName, keyObject);
+
+            //re-upload new video
+            handleUpdateFile(req, bucketName, currentTime);
+
+            const tailUrl = `${currentTime}-${req.file.originalname}`;
+            videoUrl = `https://videosbucket-01.s3.ap-southeast-1.amazonaws.com/${tailUrl}`;
+        }
+        currentVideo.title = titleVideo;
+        currentVideo.videoDescription = videoDescription;
+        if (videoUrl !== undefined) {
+            currentVideo.urlVideo = videoUrl;
+        }
+        currentVideo.uploadDate = Date.now();
+        const updateData = await currentVideo.save();
+        return res.status(200).json({ "Message": "Updated", "videoData": updateData })
+    }
+    return res.status(401).json({ "message": "Not permitted to edit video" });
+}
+//delete a video in a course base on course Id
+exports.deleteAVideo = async (req, res, next) => {
+    const videoId = req.params.videoId;
+    const courseId = req.params.courseId;
+    const currentCourse = await Course.findById(courseId);
+    // if (currentCourse.instructor.toString() !== req.instId.toString()) {
+    //     return res.status(401).json({ "message": "Not permitted to edit video" });
+    // }
+
+    if (req.userRole === "Admin" || currentCourse.instructor.toString() === req.instId.toString()) {
+        const currentVideo = await Video.findById(videoId);
+        //delete in course array
+        await Course.updateOne(
+            { _id: courseId }, // Lọc theo ID khóa học
+            { $pull: { videoLists: videoId } } // Xóa videoId khỏi mảng videoLists
+        );
+        if (!currentVideo) {
+            return res.status(404).json({ "message": "Not found!" });
+        }
+        const bucketName = 'videosbucket-01';
+
+        //delete item on bucket
+        const keyObject = currentVideo.urlVideo.split('.amazonaws.com/')[1];
+        try {
+            //delete on AWS
+            handleDeleteFile(req, bucketName, keyObject);
+            await Video.deleteOne({ _id: videoId });
+            return res.status(200).json({ "message": "Deleted!" })
+        } catch (err) {
+            console.log(error);
+            res.status(500).json({ "message": "Interal error" });
+        }
+    }
+    return res.status(401).json({ "message": "Not permitted to delete video" });
+}
+
 //delete a course
 exports.deleteCourse = async (req, res, next) => {
     try {
         const courseId = req.params.courseId;
-        console.log(courseId);
+        const currentCourse = await Course.findById(courseId);
+
+        if (!currentCourse) {
+            return res.status(404).json({ "message": "Course not found!" });
+        }
+
+        //get list of video and delete 
 
         await Instruction.updateMany(
             { createdCourse: courseId },

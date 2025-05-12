@@ -7,6 +7,11 @@ const instructorSchema = new Schema({
         type: String,
         required: true
     },
+    userId: {
+        type: mongoose.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
     email: {
         type: String,
         required: true
@@ -26,6 +31,11 @@ const instructorSchema = new Schema({
         type: String
     },
     createdCourse: [{ type: mongoose.Types.ObjectId, ref: 'Course', required: true }],
+    pending: {
+        type: Boolean,
+        default: true,
+        required: true
+    }
 })
 
 module.exports = mongoose.model('Instruction', instructorSchema);
