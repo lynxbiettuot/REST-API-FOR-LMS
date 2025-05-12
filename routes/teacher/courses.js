@@ -32,9 +32,18 @@ router.put('/teaching/update-course/:courseId', isAuth, authorize(['course:updat
 router.delete('/teaching/delete-course/:courseId', isAuth, authorize(['course:delete:own']), courseController.deleteCourse);
 
 //create a video
-router.post('/teaching/:courseId/create', upload.single('uploaded_file'), courseController.createAVideo);
+router.post('/teaching/:courseId/create', isAuth, authorize(['course:delete:own']), upload.single('uploaded_file'), courseController.createAVideo);
+
+//watch a video of a course
+router.get('/teaching/:courseId/watch/:videoId', isAuth, authorize(['course:watch:video']), courseController.watchVideoBaseOnCourseId);
 
 //watch full list of video
-router.get('/teaching/:courseId/watch/:videoId', courseController.watchVideoBaseOnCourseId);
+router.get('/teaching/:courseId/watch', isAuth, authorize(['course:watch:video']), courseController.getFullVideosOfACourse);
+
+//update a video
+router.put('/teaching/:courseId/edit/:videoId', isAuth, authorize(['course:edit:video']), upload.single('upload_file'), courseController.editAVideo);
+
+//delete a video
+router.delete('/teaching/:courseId/delete/:videoId', isAuth, authorize(['course:delete:video']), courseController.deleteAVideo);
 
 module.exports = router;

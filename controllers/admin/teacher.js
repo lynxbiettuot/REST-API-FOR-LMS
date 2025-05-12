@@ -145,3 +145,26 @@ exports.deleteInstructor = async (req, res, next) => {
         res.status(500).json({ message: "Internal Server Error" });
     }
 }
+
+//handle instructor pending approve
+exports.handlePendingRequest = async (req, res, next) => {
+    const instructorId = req.params.instructorId;
+    const currentInstructor = await Instruction.findById(instructorId.trim());
+    if (!currentInstructor) {
+        return res.status(404).json({ "message": "Instructor is not found!" });
+    }
+    currentInstructor.pending = false;
+    res.status(200).json({ "message": "Instructor is approved!" });
+}
+
+//reject instructor pending request
+exports.rejectPendingRequest = async (req, res, next) => {
+    const instructorId = req.params.instructorId;
+    const currentInstructor = await Instruction.findById(instructorId.trim());
+    if (!currentInstructor) {
+        return res.status(404).json({ "message": "Instructor is not found!" });
+    }
+    const currentEmail = currentInstructor.email;
+    await Instruction.findByIdAndDelete(instructorId);
+    //refer to instructor account on user model and delete
+}

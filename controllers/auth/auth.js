@@ -76,6 +76,7 @@ exports.signup = async (req, res, next) => {
 
         await newUser.save();
 
+        //add a field which name userId to refer to User model
         if (role === "Student") {
             const newStudent = new Student({
                 name: fullName,

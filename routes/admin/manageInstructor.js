@@ -11,6 +11,12 @@ const isAuth = require('../../middleware/is-auth.js');
 //Autorization
 const authorize = require('../../middleware/rbac.js');
 
+// handling pending when Instructor registe
+router.post('/pending/:instructorId/approve', instructorManaging.handlePendingRequest);
+
+// handling pending when Instructor registe
+router.post('/pending/:instructorId/reject', instructorManaging.rejectPendingRequest);
+
 //get full instruction
 router.get('/', isAuth, authorize(['user:read']), instructorManaging.getFullInstructor);
 

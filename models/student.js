@@ -7,6 +7,11 @@ const studentSchema = new Schema({
         type: String,
         required: true
     },
+    userId: {
+        type: mongoose.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
     email: {
         type: String,
         required: true

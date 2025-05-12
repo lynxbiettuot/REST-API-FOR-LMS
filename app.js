@@ -6,6 +6,8 @@ const cookieParser = require('cookie-parser');
 
 const app = express();
 
+const bcrypt = require('bcrypt');
+
 // parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: true }))
 app.use(cookieParser());
@@ -20,6 +22,7 @@ const Course = require('./models/courses.js');
 const Student = require('./models/student.js');
 const Instruction = require('./models/instruction.js');
 const Admin = require('./models/admin.js');
+const User = require('./models/users.js');
 
 //manage course by lecturer
 const teacherRoutes = require('./routes/teacher/courses.js');
@@ -46,6 +49,15 @@ app.use((req, res, next) => {
 });
 
 app.get('/', async (req, res, next) => {
+    // const pw = "09012004";
+    // //hashing
+    // const hashedPassword = await bcrypt.hash(pw, 12);
+    // const newUser = new User({
+    //     email: "admin01@gmail.com",
+    //     password: hashedPassword,
+    //     role: "Admin"
+    // });
+    // await newUser.save();
     return res.json({ "message": "Hello World" });
 })
 //authenticate
