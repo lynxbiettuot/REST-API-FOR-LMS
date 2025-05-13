@@ -208,29 +208,47 @@ exports.deleteAVideo = async (req, res, next) => {
 exports.deleteCourse = async (req, res, next) => {
     try {
         const courseId = req.params.courseId;
-        const currentCourse = await Course.findById(courseId);
+        //Add a step to find creator by courseId
 
-        if (!currentCourse) {
-            return res.status(404).json({ "message": "Course not found!" });
+        const deleteCourse = await Course.findById(courseId).populate("videoLists");
+        const currentVideoLists = deleteCourse.videoLists;
+        if (!deleteCourse) {
+            return res.status(404).json({ "message": "Course is not found!" });
         }
 
-        //get list of video and delete 
+        // another instructor change current instructor course
+        if (req.userRole !== "Admin") {
+            return res.status(401).json({ "message": "Not permitted!" });
+        }
 
+        //delete all video of a course before delete this course
+        const bucketName = 'videosbucket-01';
+
+        //delete all videos of a course
+        currentVideoLists.forEach(async (currentVideo) => {
+            const keyObject = currentVideo.urlVideo.split('.amazonaws.com/')[1];
+            //on aws
+            await handleDeleteFile(req, bucketName, keyObject);
+            //on Schema Video
+            await Video.deleteOne({ _id: currentVideo._id });
+            //on course array
+            await Course.updateOne(
+                { _id: courseId },
+                { $pull: { videoLists: currentVideo._id } }
+            );
+        })
+
+        //delete course in Instruction
         await Instruction.updateMany(
             { createdCourse: courseId },
             { $pull: { createdCourse: courseId } }
         );
 
+        //delete course in Student if enrolled
         await Student.updateMany(
             { course: courseId },
             { $pull: { course: courseId } }
         );
-
-        await Admin.updateMany(
-            { fullCourse: courseId },
-            { $pull: { fullCourse: courseId } }
-        );
-
         await Course.findByIdAndDelete(courseId);
 
         res.status(200).json({ message: "Deleted" });

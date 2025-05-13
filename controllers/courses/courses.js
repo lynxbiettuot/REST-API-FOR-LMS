@@ -25,7 +25,7 @@ exports.getFullCourse = async (req, res, next) => {
     return res.json({ "message": "Okay", "courseData": courses });
 }
 
-//get may courses by searching
+//get many courses by searching
 exports.getSearchingCourses = async (req, res, next) => {
     const searchTarget = req.query.search || '';
     const courses = await Course.find({

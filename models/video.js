@@ -17,6 +17,11 @@ const videoSchema = new Schema({
     uploadDate: {
         type: Date,
         default: Date.now()
+    },
+    course: {
+        type: Schema.Types.ObjectId,
+        ref: 'Course',
+        required: true
     }
 });
 
