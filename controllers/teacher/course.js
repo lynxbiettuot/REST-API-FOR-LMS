@@ -43,9 +43,9 @@ async function handleUpdateFile(req, bucketName, currentTime) {
 }
 
 //function to delete video
-async function handleDeleteFile(req, bucketName, videoTime) {
+async function handleDeleteFile(req, bucketName, videoKey) {
     const s3Client = new S3Client({});
-    const bucketParams = { Bucket: `${bucketName}`, Key: `${videoTime}` };
+    const bucketParams = { Bucket: `${bucketName}`, Key: `${videoKey}` };
     await s3Client.send(new DeleteObjectCommand(bucketParams));
 }
 
@@ -130,20 +130,41 @@ exports.deleteCourse = async (req, res, next) => {
         const courseId = req.params.courseId;
         //Add a step to find creator by courseId
 
-        const deleteCourse = await Course.findById(courseId);
+        const deleteCourse = await Course.findById(courseId).populate("videoLists");
+        const currentVideoLists = deleteCourse.videoLists;
         if (!deleteCourse) {
             return res.status(404).json({ "message": "Course is not found!" });
         }
-        //another instructor change current instructor course
+
+        // another instructor change current instructor course
         if (deleteCourse.instructor.toString() !== req.instId.toString()) {
             return res.status(401).json({ "message": "Not permitted!" });
         }
 
+        //delete all video of a course before delete this course
+        const bucketName = 'videosbucket-01';
+
+        //delete all videos of a course
+        currentVideoLists.forEach(async (currentVideo) => {
+            const keyObject = currentVideo.urlVideo.split('.amazonaws.com/')[1];
+            //on aws
+            await handleDeleteFile(req, bucketName, keyObject);
+            //on Schema Video
+            await Video.deleteOne({ _id: currentVideo._id });
+            //on course array
+            await Course.updateOne(
+                { _id: courseId },
+                { $pull: { videoLists: currentVideo._id } }
+            );
+        })
+
+        //delete course in Instruction
         await Instruction.updateMany(
             { createdCourse: courseId },
             { $pull: { createdCourse: courseId } }
         );
 
+        //delete course in Student if enrolled
         await Student.updateMany(
             { course: courseId },
             { $pull: { course: courseId } }
@@ -180,7 +201,8 @@ exports.createAVideo = async (req, res, next) => {
             title: titleVideo,
             urlVideo: videoUrl,
             videoDescription: videoDescription,
-            uploadDate: Date.now()
+            uploadDate: Date.now(),
+            course: courseId
         })
         await currentVideo.save();
         await Course.findByIdAndUpdate(
@@ -189,7 +211,8 @@ exports.createAVideo = async (req, res, next) => {
             { new: true }
         );
         const courseVideos = await Course.findById(courseId).populate('videoLists');
-        return res.json({ "message": "Upload successed!", "courseVideoUrls": courseVideos });
+        const result = courseVideos.videoLists;
+        return res.json({ "message": "Upload successed!", "courseData": result });
     } catch (error) {
         console.log(error);
         return res.status(500).json({ "message": "Internal error" });
@@ -257,7 +280,7 @@ exports.editAVideo = async (req, res, next) => {
     }
     currentVideo.uploadDate = Date.now();
     const updateData = await currentVideo.save();
-    res.status(200).json({ "Message": "Updated", "videoData": "updateData" })
+    res.status(200).json({ "message": "Updated", "videoData": updateData })
 }
 
 //delete video base on courseId(both use for Admin)

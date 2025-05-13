@@ -21,7 +21,7 @@ module.exports = async (req, res, next) => {
     } catch (err) {
         return res.status(500).json({ "message": "Not authenticated!" });
     }
-    console.log(decodedToken);
+    // console.log(decodedToken);
     if (!decodedToken) {
         return res.status(401).json({ "message": "Not authenticated!" });
     }
