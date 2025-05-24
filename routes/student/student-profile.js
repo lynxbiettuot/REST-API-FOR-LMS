@@ -14,11 +14,12 @@ const upload = multer({ storage: storage });
 
 //auth function
 const isAuth = require('../../middleware/is-auth.js');
+const instructorVerification = require('../../middleware/instructorVerification.js');
 
 //Autorization
 const authorize = require('../../middleware/rbac.js');
 
 //update instructor profile
-router.post('/update-student-profile', isAuth, authorize(['update:profile:own']), upload.single('uploaded_file'), studentController.changeStudentProfile);
+router.post('/update-student-profile', isAuth, instructorVerification, authorize(['update:profile:own']), upload.single('uploaded_file'), studentController.changeStudentProfile);
 
 module.exports = router;

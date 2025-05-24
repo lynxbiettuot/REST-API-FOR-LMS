@@ -11,39 +11,46 @@ const upload = multer({ storage: storage });
 
 const courseController = require('../../controllers/teacher/course.js');
 
+//middleware
 const isAuth = require('../../middleware/is-auth.js');
-
+const instructorVerification = require('../../middleware/instructorVerification.js');
 //Autorization
 const authorize = require('../../middleware/rbac.js');
 
 //get full course
-router.get('/teaching', isAuth, courseController.getFullCourse);
+router.get('/teaching', isAuth, instructorVerification, courseController.getFullCourse);
 
 //get infor of a course
-router.get('/teaching/:courseId', isAuth, courseController.getCourse);
+router.get('/teaching/:courseId', isAuth, instructorVerification, courseController.getCourse);
 
-//create post
-router.post('/teaching/create-course', isAuth, authorize(['course:create']), courseController.createCourse);
+//create a course
+router.post('/teaching/create-course', isAuth, instructorVerification, authorize(['course:create']), courseController.createCourse);
 
 //update course
-router.put('/teaching/update-course/:courseId', isAuth, authorize(['course:update:own']), courseController.updateCourse);
+router.put('/teaching/update-course/:courseId', isAuth, instructorVerification, authorize(['course:update:own']), courseController.updateCourse);
 
 //delete course
-router.delete('/teaching/delete-course/:courseId', isAuth, authorize(['course:delete:own']), courseController.deleteCourse);
+router.delete('/teaching/delete-course/:courseId', isAuth, instructorVerification, authorize(['course:delete:own']), courseController.deleteCourse);
 
 //create a video
-router.post('/teaching/:courseId/create', isAuth, authorize(['course:delete:own']), upload.single('uploaded_file'), courseController.createAVideo);
+router.post('/teaching/:courseId/create', isAuth, instructorVerification, authorize(['course:delete:own']), upload.single('uploaded_file'), courseController.createAVideo);
 
 //watch a video of a course
-router.get('/teaching/:courseId/watch/:videoId', isAuth, authorize(['course:watch:video']), courseController.watchVideoBaseOnCourseId);
+router.get('/teaching/:courseId/watch/:videoId', isAuth, instructorVerification, authorize(['course:watch:video']), courseController.watchVideoBaseOnCourseId);
 
 //watch full list of video
-router.get('/teaching/:courseId/watch', isAuth, authorize(['course:watch:video']), courseController.getFullVideosOfACourse);
+router.get('/teaching/:courseId/watch', isAuth, instructorVerification, authorize(['course:watch:video']), courseController.getFullVideosOfACourse);
 
 //update a video
-router.put('/teaching/:courseId/edit/:videoId', isAuth, authorize(['course:edit:video']), upload.single('upload_file'), courseController.editAVideo);
+router.put('/teaching/:courseId/edit/:videoId', isAuth, instructorVerification, authorize(['course:edit:video']), upload.single('upload_file'), courseController.editAVideo);
 
 //delete a video
-router.delete('/teaching/:courseId/delete/:videoId', isAuth, authorize(['course:delete:video']), courseController.deleteAVideo);
+router.delete('/teaching/:courseId/delete/:videoId', isAuth, instructorVerification, authorize(['course:delete:video']), courseController.deleteAVideo);
+
+//get excercis PDF
+router.post('/teaching/:courseId/excercise/:videoId', isAuth, instructorVerification, upload.single('uploaded_file'), courseController.uploadExcercisePDF);
+
+//upload excercis PDF
+router.get('/teaching/:courseId/excercise:videoId', isAuth, instructorVerification, courseController.getExcercisePDF);
 
 module.exports = router;

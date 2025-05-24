@@ -146,6 +146,15 @@ exports.deleteInstructor = async (req, res, next) => {
     }
 }
 
+//get instructor pending request
+exports.getListPendingInstructor = async (req, res, next) => {
+    const currentInstructors = await Instruction.find();
+    const pendingInstructor = currentInstructors.forEach((instructor) => {
+        return instructor.pendingStatus === "pending";
+    })
+    res.status(200).json({ "message": "Successed!", "pendingInstructor": pendingInstructor });
+}
+
 //handle instructor pending approve
 exports.handlePendingRequest = async (req, res, next) => {
     const instructorId = req.params.instructorId;
@@ -153,7 +162,8 @@ exports.handlePendingRequest = async (req, res, next) => {
     if (!currentInstructor) {
         return res.status(404).json({ "message": "Instructor is not found!" });
     }
-    currentInstructor.pending = false;
+    currentInstructor.pendingStatus = "approved";
+    await currentInstructor.save();
     res.status(200).json({ "message": "Instructor is approved!" });
 }
 
@@ -164,7 +174,10 @@ exports.rejectPendingRequest = async (req, res, next) => {
     if (!currentInstructor) {
         return res.status(404).json({ "message": "Instructor is not found!" });
     }
-    const currentEmail = currentInstructor.email;
+    const userInstructorId = currentInstructor.userId;
     await Instruction.findByIdAndDelete(instructorId);
     //refer to instructor account on user model and delete
+    await User.findByIdAndDelete(userInstructorId);
+    res.status(200).json({ "message": "Instructor rejected your request!" });
 }
+

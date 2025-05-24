@@ -28,6 +28,11 @@ const courseSchema = new Schema({
     price: {
         type: Number,
         required: true
+    },
+    pendingStatus: {
+        type: String,
+        default: "pending",
+        required: true
     }
 });
 

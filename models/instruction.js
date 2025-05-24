@@ -31,9 +31,9 @@ const instructorSchema = new Schema({
         type: String
     },
     createdCourse: [{ type: mongoose.Types.ObjectId, ref: 'Course', required: true }],
-    pending: {
-        type: Boolean,
-        default: true,
+    pendingStatus: {
+        type: String,
+        default: "pending",
         required: true
     }
 })

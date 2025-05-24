@@ -50,10 +50,11 @@ async function handleDeleteFile(req, bucketName, videoKey) {
 }
 
 
-//getFull Course
+//getFull Course of owner
 exports.getFullCourse = async (req, res, next) => {
-    const courses = await Instruction.findById(req.instId).populate("createdCourse");
-    res.status(200).json({ "statusCode": 200, "message": 'Completed retrieve', "course": courses })
+    const currentInstructor = await Instruction.findById(req.instId).populate('createdCourse');
+    const fullCourse = currentInstructor.createdCourse;
+    res.status(200).json({ "statusCode": 200, "message": 'Completed retrieved!', "course": fullCourse })
 }
 
 //get a course by id
@@ -69,7 +70,7 @@ exports.getCourse = async (req, res, next) => {
 //create a course
 exports.createCourse = async (req, res, next) => {
     try {
-        if (!req.userRole !== 'Instructor') {
+        if (req.userRole !== 'Instructor') {
             return res.status(401).json({ "message": "Not permitted" });
         }
         const instructorId = req.instId;
@@ -314,4 +315,45 @@ exports.deleteAVideo = async (req, res, next) => {
         console.log(error);
         res.status(500).json({ "message": "Interal error" });
     }
+}
+
+//upload excercise PDF
+exports.uploadExcercisePDF = async (req, res, next) => {
+    const courseId = req.params.courseId;
+    const courseOwnerId = await Course.findById(courseId);
+    const videoId = req.params.videoId;
+    if (courseOwnerId.instructor.toString() !== req.instId.toString()) {
+        return res.status(401).json({ "message": "Not permitted to add excercise" });
+    }
+    const bucketName = 'videosbucket-01';
+    const currentTime = Date.now();
+    try {
+        await handleUpdateFile(req, bucketName, currentTime);
+        const tailUrl = `${currentTime}-${req.file.originalname}`;
+        const excerciseUrl = `https://videosbucket-01.s3.ap-southeast-1.amazonaws.com/${tailUrl}`;
+        await Video.findByIdAndUpdate(
+            videoId,
+            { excerciseUrl: excerciseUrl },
+            { new: true }
+        );
+        return res.status(200).json({ "message": "Upload successed!" });
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ "message": "Internal error" });
+    }
+}
+
+//get excercise PDF
+exports.getExcercisePDF = async (req, res, next) => {
+    const courseId = req.params.courseId;
+    const videoId = req.params.videoId;
+    const currentVideo = await Video.findById(videoId);
+    if (!currentVideo) {
+        return res.status(404).json({ "message": "Not found!" });
+    }
+    const excerciseUrl = currentVideo.excerciseUrl;
+    if (!excerciseUrl) {
+        return res.status(404).json({ "message": "Not found!" });
+    }
+    return res.status(200).json({ "message": "Retrieved success!", "excerciseUrl": excerciseUrl });
 }

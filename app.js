@@ -8,6 +8,9 @@ const app = express();
 
 const bcrypt = require('bcrypt');
 
+const studentController = require('./controllers/student/course.js')
+app.post('/student/webhook', express.raw({ type: 'application/json' }), studentController.handleWebhook);
+
 // parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: true }))
 app.use(cookieParser());
@@ -73,6 +76,14 @@ app.use('/teacher/profile', teacherProfileRoutes);
 //student
 app.use("/student", studentRoutes);
 app.use("/student/profile", studentProfileRoutes)
+app.get('/student/checkout/success', async (req, res) => {
+    res.send(`<h1>Thanh toán thành công!</h1><p>Session ID:</p>`);
+});
+
+app.get('/student/checkout/cancel', (req, res) => {
+    res.send('<h1>Thanh toán đã bị hủy.</h1>');
+});
+
 
 // admin
 app.use("/admin/course", managingCourseAdmin);

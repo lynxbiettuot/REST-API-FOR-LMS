@@ -79,7 +79,8 @@ exports.createCourse = async (req, res, next) => {
             title: req.body.title,
             description: req.body.description,
             instructor: null,
-            price: req.body.price
+            price: req.body.price,
+            pendingStatus: "approved"
         });
 
         const savedCourse = await newCourse.save();
@@ -255,4 +256,41 @@ exports.deleteCourse = async (req, res, next) => {
     } catch (error) {
         res.status(500).json({ message: "Server error!", error });
     }
+}
+
+//get list of pending course
+exports.getListPendingCourse = async (req, res, next) => {
+    const currentCourse = await Course.find();
+    const pendingCourse = currentCourse.forEach((course) => {
+        return course.pendingStatus === "pending";
+    })
+    res.status(200).json({ "message": "Successed!", "pendingCourse": pendingCourse });
+}
+
+//handle instructor pending approve
+exports.handlePendingCourseRequest = async (req, res, next) => {
+    const courseId = req.params.courseId;
+    const currentCourse = await Course.findById(courseId.trim());
+    if (!currentCourse) {
+        return res.status(404).json({ "message": "Course is not found!" });
+    }
+    currentCourse.pendingStatus = "approved";
+    await currentInstructor.save();
+    res.status(200).json({ "message": "Instructor is approved!" });
+}
+
+//reject instructor pending request
+exports.rejectPendingCourseRequest = async (req, res, next) => {
+    const courseId = req.params.courseId;
+    const userId = req.params.instructorId;
+    const currentCourse = await Course.findById(courseId.trim());
+    if (!currentCourse) {
+        return res.status(404).json({ "message": "Course is not found!" });
+    }
+    await Course.findByIdAndDelete(courseId);
+    await Instruction.findByIdAndUpdate(
+        { _id: userId },
+        { $pull: { createdCourse: courseId } }
+    )
+    res.status(200).json({ "message": "Admin rejected your course request!" });
 }
