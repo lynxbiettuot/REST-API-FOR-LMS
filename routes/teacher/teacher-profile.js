@@ -18,6 +18,9 @@ const isAuth = require('../../middleware/is-auth.js');
 //Autorization
 const authorize = require('../../middleware/rbac.js');
 
+//get instructor profile
+router.get('/', isAuth, instructorController.getInstructorProfile);
+
 //update instructor profile
 router.post('/update-instructor-profile', isAuth, authorize(['update:profile:own']), upload.single('uploaded_file'), instructorController.changeInstructorProfile);
 

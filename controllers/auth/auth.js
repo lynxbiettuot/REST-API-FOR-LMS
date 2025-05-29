@@ -51,10 +51,10 @@ exports.signup = async (req, res, next) => {
         const email = req.body.email;
         const password = req.body.password;
         const confrimPassword = req.body.confirmPassword;
-        const fullName = req.body.fullName;
+        const fullName = req.body.name;
         const phoneNumber = req.body.phoneNumber;
         const role = req.body.role;
-        const adminId = "67e6fcf4c2de2359117877a1";
+        const adminId = "68219d1c22f09394ae396648";
 
         const existUser = await User.findOne({ email: email.trim() });
         if (existUser) {
@@ -80,6 +80,7 @@ exports.signup = async (req, res, next) => {
         if (role === "Student") {
             const newStudent = new Student({
                 name: fullName,
+                userId: newUser._id,
                 email: email,
                 password: hashedPassword,
                 phoneNumber: phoneNumber,
@@ -147,7 +148,7 @@ exports.login = async (req, res, next) => {
         // Assigning refresh token in http-only cookie 
         res.cookie('jwt', refreshToken, {
             httpOnly: true,
-            sameSite: 'None', secure: true,
+            sameSite: 'None', secure: false,
             maxAge: 24 * 60 * 60 * 1000
         });
         const role = currentUser.role;

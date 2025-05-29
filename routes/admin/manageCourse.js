@@ -22,7 +22,7 @@ const upload = multer({ storage: storage });
 //handling pending when Instructor post an request to create a course
 
 //get pendingCourse
-router.get('/pending/course', isAuth, authorize(['handle:request']), courseManaging.getListPendingCourse);
+router.get('/pending', isAuth, authorize(['handle:request']), courseManaging.getListPendingCourse);
 
 // handling pending course
 router.get('/pending/:instructorId/:courseId/approve', isAuth, authorize(['handle:request']), courseManaging.handlePendingCourseRequest);

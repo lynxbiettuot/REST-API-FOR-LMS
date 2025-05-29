@@ -91,8 +91,8 @@ app.use("/admin/instructor", managingInstructor);
 app.use('/admin/student', managingStudent);
 
 mongoose.connect(MONGODB_URL).then(result => {
-    app.listen(3000, () => {
-        console.log('App is listening on port 3000');
+    app.listen(8000, () => {
+        console.log('App is listening on port 8000');
     })
 }).catch(err => {
     console.log(err);

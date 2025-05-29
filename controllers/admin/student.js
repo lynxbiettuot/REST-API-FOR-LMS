@@ -40,7 +40,7 @@ exports.getStudent = async (req, res, next) => {
 exports.createStudent = async (req, res, next) => {
     try {
         //save to Student model and Admin model
-        const adminId = req.body.adminId;
+        const adminId = "68219d1c22f09394ae396648";
         const newName = req.body.name;
         const newEmail = req.body.email;
         const newPassword = req.body.password;

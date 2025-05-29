@@ -52,7 +52,7 @@ async function handleDeleteFile(req, bucketName, videoTime) {
 exports.getFullCourse = (req, res, next) => {
     Course.find().then(courses => {
         console.log(courses);
-        res.json({ "statusCode": 200, "message": 'Completed retrieve', "course": courses })
+        res.json({ "statusCode": 200, "message": 'Completed retrieve', "courses": courses })
     })
 }
 
@@ -165,7 +165,7 @@ exports.editAVideo = async (req, res, next) => {
         }
         currentVideo.uploadDate = Date.now();
         const updateData = await currentVideo.save();
-        return res.status(200).json({ "Message": "Updated", "videoData": updateData })
+        return res.status(200).json({ "message": "Updated", "videoData": updateData })
     }
     return res.status(401).json({ "message": "Not permitted to edit video" });
 }

@@ -4,6 +4,7 @@ const Course = require('../../models/courses.js');
 const Instruction = require('../../models/instruction.js');
 const Student = require('../../models/student.js');
 const Video = require('../../models/video.js');
+const Excercise = require('../../models/excercise.js');
 
 const { ObjectId } = require('mongodb');
 
@@ -320,17 +321,19 @@ exports.deleteAVideo = async (req, res, next) => {
 //upload excercise PDF
 exports.uploadExcercisePDF = async (req, res, next) => {
     const courseId = req.params.courseId;
+    const excerciseURL = req.file;
     const courseOwnerId = await Course.findById(courseId);
     const videoId = req.params.videoId;
+
     if (courseOwnerId.instructor.toString() !== req.instId.toString()) {
         return res.status(401).json({ "message": "Not permitted to add excercise" });
     }
-    const bucketName = 'videosbucket-01';
+    const bucketName = 'imagesbucket-01';
     const currentTime = Date.now();
     try {
         await handleUpdateFile(req, bucketName, currentTime);
         const tailUrl = `${currentTime}-${req.file.originalname}`;
-        const excerciseUrl = `https://videosbucket-01.s3.ap-southeast-1.amazonaws.com/${tailUrl}`;
+        const excerciseUrl = `https://imagesbucket-01.s3.ap-southeast-1.amazonaws.com/${tailUrl}`;
         await Video.findByIdAndUpdate(
             videoId,
             { excerciseUrl: excerciseUrl },

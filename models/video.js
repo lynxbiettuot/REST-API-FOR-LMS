@@ -22,6 +22,9 @@ const videoSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'Course',
         required: true
+    },
+    excerciseUrl: {
+        type: String
     }
 });
 

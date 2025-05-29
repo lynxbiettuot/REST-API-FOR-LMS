@@ -97,3 +97,13 @@ exports.changeInstructorProfile = async (req, res, next) => {
     // const updatedProfile = await currentUser.save();
     return res.json({ "message": "Updated", "data": "updatedProfile " });
 }
+
+//get instructor profile
+exports.getInstructorProfile = async (req, res, next) => {
+    const currentInstructorId = req.instId;
+    const currentInstructor = await Instructor.findById(currentInstructorId).populate('createdCourse');
+    if (!currentInstructor) {
+        return res.status(404).json({ "message": "Instructor is not found!" });
+    }
+    return res.status(200).json({ "message": "Success", "instructorData": currentInstructor });
+}

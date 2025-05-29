@@ -47,7 +47,7 @@ router.put('/teaching/:courseId/edit/:videoId', isAuth, instructorVerification, 
 //delete a video
 router.delete('/teaching/:courseId/delete/:videoId', isAuth, instructorVerification, authorize(['course:delete:video']), courseController.deleteAVideo);
 
-//get excercis PDF
+//post excercis PDF
 router.post('/teaching/:courseId/excercise/:videoId', isAuth, instructorVerification, upload.single('uploaded_file'), courseController.uploadExcercisePDF);
 
 //upload excercis PDF

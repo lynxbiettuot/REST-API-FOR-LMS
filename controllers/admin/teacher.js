@@ -11,7 +11,7 @@ const User = require('../../models/users.js');
 exports.getFullInstructor = async (req, res, next) => {
     try {
         const listInstruction = await Instruction.find();
-        res.status(200).json({ "message": "Completed retrieved", listInstruction: listInstruction });
+        res.status(200).json({ "message": "Completed retrieved", "listInstructor": listInstruction });
     } catch (error) {
         console.log(error);
         res.status(500).json({ "statusCode": 500, "message": "Internal server" });
@@ -41,7 +41,7 @@ exports.addNewInstructor = async (req, res, next) => {
         const email = data.email;
         const password = data.password;
         const newCourses = [];
-        const adminId = data.adminId;
+        const adminId = "68219d1c22f09394ae396648";
         const newInstructor = new Instruction({
             name: name,
             email: email,

@@ -12,7 +12,7 @@ const isAuth = require('../../middleware/is-auth.js');
 const authorize = require('../../middleware/rbac.js');
 
 //get pendingInstructor
-router.get('/pending/course', isAuth, authorize(['handle:request']), instructorManaging.getListPendingInstructor);
+router.get('/pending', isAuth, authorize(['handle:request']), instructorManaging.getListPendingInstructor);
 
 // handling pending when Instructor registe
 router.get('/pending/:instructorId/approve', isAuth, authorize(['handle:request']), instructorManaging.handlePendingRequest);
