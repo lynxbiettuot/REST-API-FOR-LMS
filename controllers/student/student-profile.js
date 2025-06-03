@@ -37,6 +37,12 @@ async function handleUpdateFile(req, bucketName, currentTime) {
     );
 }
 
+exports.getStudentProfile = async (req, res, next) => {
+    const currentStudentId = req.stuId;
+    const currentProfile = await Student.findById(currentStudentId).populate('course');
+    res.status(200).json({ "message": "Completed", "studentData": currentProfile });
+}
+
 exports.changeStudentProfile = async (req, res, next) => {
     const newName = req.body.name;
     const newAvatarUrl = req.file;

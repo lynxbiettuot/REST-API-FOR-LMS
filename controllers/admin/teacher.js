@@ -7,6 +7,8 @@ const Admin = require('../../models/admin.js');
 const Course = require('../../models/courses.js');
 const User = require('../../models/users.js');
 
+const bcrypt = require('bcrypt');
+
 //get full Instructor
 exports.getFullInstructor = async (req, res, next) => {
     try {
@@ -42,10 +44,11 @@ exports.addNewInstructor = async (req, res, next) => {
         const password = data.password;
         const newCourses = [];
         const adminId = "68219d1c22f09394ae396648";
+        const hashedPassword = await bcrypt.hash(password, 12);
         const newInstructor = new Instruction({
             name: name,
             email: email,
-            password: password,
+            password: hashedPassword,
             createdCourse: newCourses
         });
         //save to Instruction model
@@ -92,12 +95,16 @@ exports.editAnInstruction = async (req, res, next) => {
         const newPassword = data.password;
         const newName = data.name;
 
+        const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+        //update Instructor Schema
         currentInstructor.name = newName;
         currentInstructor.email = newEmail;
-        currentInstructor.password = newPassword;
+        currentInstructor.password = hashedPassword;
 
+        //update User Schema
         currentUser.email = newEmail;
-        currentUser.password = newPassword;
+        currentUser.password = hashedPassword;
 
         //save in user model
         await currentUser.save();
@@ -178,6 +185,14 @@ exports.rejectPendingRequest = async (req, res, next) => {
     await Instruction.findByIdAndDelete(instructorId);
     //refer to instructor account on user model and delete
     await User.findByIdAndDelete(userInstructorId);
+
+    const adminId = "68219d1c22f09394ae396648"
+    //delete on admin
+    await Admin.findByIdAndUpdate(
+        adminId,
+        { $pull: { student: dataReply._id } },
+        { new: true }
+    );
     res.status(200).json({ "message": "Instructor rejected your request!" });
 }
 

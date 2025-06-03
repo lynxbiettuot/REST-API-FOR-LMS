@@ -12,10 +12,15 @@ const instructorVerification = require('../../middleware/instructorVerification.
 const authorize = require('../../middleware/rbac.js');
 
 //get full course
-router.get('/studying', isAuth, instructorVerification, authorize(['course:read']), studentController.getFullCourse);
+router.get('/studying', isAuth, authorize(['course:read']), studentController.getFullCourse);
 
 //get a course
-router.get('/studying/course/:courseId', isAuth, instructorVerification, authorize(['course:read']), studentController.getCourseDetail);
+router.get('/studying/course/:courseId', isAuth, authorize(['course:read']), studentController.getCourseDetail);
+
+//get list video of a course if enroll is success
+router.get('/studying/:courseId/watch', isAuth, authorize(['course:watch:video']), studentController.getListOfCourse);
+//watch a video of a course
+router.get('/studying/:courseId/watch/:videoId', isAuth, authorize(['course:watch:video']), studentController.watchVideoBaseOnCourseId);
 
 //get full course in cart
 router.get('/cart', isAuth, studentController.getCart);
@@ -31,5 +36,6 @@ router.get('/checkout', isAuth, studentController.getCheckout);
 
 //handle checkout and retrive payment event
 router.post('/webhook', express.raw({ type: 'application/json' }), studentController.handleWebhook);
+
 
 module.exports = router;

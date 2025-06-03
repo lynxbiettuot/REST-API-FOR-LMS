@@ -252,6 +252,14 @@ exports.deleteCourse = async (req, res, next) => {
         );
         await Course.findByIdAndDelete(courseId);
 
+        const adminId = "68219d1c22f09394ae396648";
+
+        await Admin.findByIdAndUpdate(
+            adminId,
+            { $pull: { fullCourse: courseId } },
+            { new: true }
+        );
+
         res.status(200).json({ message: "Deleted" });
     } catch (error) {
         res.status(500).json({ message: "Server error!", error });
@@ -261,9 +269,7 @@ exports.deleteCourse = async (req, res, next) => {
 //get list of pending course
 exports.getListPendingCourse = async (req, res, next) => {
     const currentCourse = await Course.find();
-    const pendingCourse = currentCourse.forEach((course) => {
-        return course.pendingStatus === "pending";
-    })
+    const pendingCourse = currentCourse.filter(course => course.pendingStatus === "pending");
     res.status(200).json({ "message": "Successed!", "pendingCourse": pendingCourse });
 }
 
@@ -275,21 +281,26 @@ exports.handlePendingCourseRequest = async (req, res, next) => {
         return res.status(404).json({ "message": "Course is not found!" });
     }
     currentCourse.pendingStatus = "approved";
-    await currentInstructor.save();
-    res.status(200).json({ "message": "Instructor is approved!" });
+    await currentCourse.save();
+    res.status(200).json({ "message": "Course is approved!" });
 }
 
 //reject instructor pending request
 exports.rejectPendingCourseRequest = async (req, res, next) => {
     const courseId = req.params.courseId;
     const userId = req.params.instructorId;
-    const currentCourse = await Course.findById(courseId.trim());
+    const currentCourse = await Course.findById(courseId);
     if (!currentCourse) {
         return res.status(404).json({ "message": "Course is not found!" });
     }
     await Course.findByIdAndDelete(courseId);
     await Instruction.findByIdAndUpdate(
         { _id: userId },
+        { $pull: { createdCourse: courseId } }
+    )
+    const adminId = "68219d1c22f09394ae396648";
+    await Admin.findByIdAndUpdate(
+        { _id: adminId },
         { $pull: { createdCourse: courseId } }
     )
     res.status(200).json({ "message": "Admin rejected your course request!" });

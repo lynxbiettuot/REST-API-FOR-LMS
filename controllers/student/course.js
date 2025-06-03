@@ -4,7 +4,6 @@ const mongoose = require('mongoose');
 const Course = require('../../models/courses.js');
 const Enrollment = require('../../models/enrollment.js');
 const Student = require('../../models/student.js');
-const student = require('../../models/student.js');
 const Video = require('../../models/video.js');
 
 //use .env variable
@@ -26,21 +25,53 @@ async function updateStudent(studentId, courseId) {
 
 
 //getFull Course
-exports.getFullCourse = (req, res, next) => {
-    Course.find().then(courses => {
-        console.log(courses);
-        res.json({ "statusCode": 200, "message": 'Completed retrieve', "course": courses })
-    })
+exports.getFullCourse = async (req, res, next) => {
+    const studentId = req.stuId;
+    const currentStudent = await Student.findById(studentId).populate('course');
+    const currentCourse = currentStudent.course;
+    return res.status(200).json({ "message": "Success!", "courseData": currentCourse });
 }
 
 //get a course
-exports.getCourseDetail = (req, res, next) => {
+exports.getCourseDetail = async (req, res, next) => {
     const courseId = req.params.courseId;
-    Course.findById(courseId).then(result => {
-        res.json({ "statusCode": 200, "message": "selected", "course": result });
-    }).catch(err => {
-        console.log(err);
-    })
+    const currentCourse = await Course.findById(courseId).populate({ path: 'videoLists', select: 'title videoDescription' });
+    if (!currentCourse) {
+        return res.status(404).json({ "message": "Course is not exist!" });
+    }
+    return res.status(200).json({ "message": "Success", "courseData": currentCourse });
+}
+
+//get list of video in a course
+exports.getListOfCourse = async (req, res, next) => {
+    const courseId = req.params.courseId;
+    const currentCourse = await Course.findById(courseId).populate({ path: 'videoLists', select: 'title videoDescription' });
+    if (!currentCourse) {
+        return res.stus(404).json({ "message": "Course not found" });
+    }
+    return res.status(200).json({ "message": "Successed!", "courseData": currentCourse });
+}
+
+//watch a video
+exports.watchVideoBaseOnCourseId = async (req, res, next) => {
+    const videoId = req.params.videoId;
+    const courseId = req.params.courseId;
+    const studentId = req.stuId;
+    console.log(videoId);
+    console.log(courseId);
+    console.log(studentId);
+    if (!studentId) {
+        return res.status(403).json({ "message": "You're not student" });
+    }
+    const currentEnrollment = await Enrollment.find({ "course": courseId, "student": studentId });//return an array
+    if (currentEnrollment.length == 0) {
+        return res.status(403).json({ "message": "You are not permitted to wach video" });
+    }
+    const currentVideo = await Video.findById(videoId);
+    if (!currentVideo) {
+        return res.status(404).json({ "message": "Video is not found!" });
+    }
+    return res.status(200).json({ "message": "Okay!", "videoInfo": currentVideo });
 }
 
 //get cart 
@@ -69,9 +100,9 @@ exports.addACourseToCart = async (req, res, next) => {
     }
     const currentStudent = await Student.findById(req.stuId);
     const result = await currentStudent.addToCart(currentCourse);
-    // if (result === undefined) {
-    //     return res.status(409).json({ "message": "Course is already in the cart!" });
-    // }
+    if (result === undefined) {
+        return res.status(409).json({ "message": "Course is already in the cart!" });
+    }
     res.status(200).json({ "message": "Course is added to cart" });
 }
 
@@ -151,7 +182,7 @@ exports.handleWebhook = async (request, response, next) => {
                 endpointSecret
             );
         } catch (err) {
-            console.log(`⚠️  Webhook signature verification failed.`, err.message);
+            console.log(`Webhook signature verification failed.`, err.message);
             return response.sendStatus(400);
         }
     }
@@ -162,53 +193,21 @@ exports.handleWebhook = async (request, response, next) => {
             //save to Order Schema
             const courseIds = JSON.parse(paymentIntent.metadata.courseIds);
             const studentId = paymentIntent.metadata.studentId;
-            courseIds.forEach((courseId) => {
-                console.log(courseId);
+            const successUser = await Student.findById(studentId);
+            successUser.clearCart();
+            courseIds.forEach(async (courseId) => {
                 updateCourse(courseId, studentId);
-                updateStudent(studentId, courseId)
+                updateStudent(studentId, courseId);
+                const newEnrollment = new Enrollment({
+                    course: courseIds,
+                    student: studentId
+                })
+                await newEnrollment.save();
             })
         }
     }
-    // switch (event.type) {
-    //     case 'payment_intent.succeeded':
-    //         const paymentIntent = event.data.object;
-    //         console.log(`PaymentIntent for ${paymentIntent.amount} was successful!`);
-    //         // Then define and call a method to handle the successful payment intent.
-    //         // handlePaymentIntentSucceeded(paymentIntent);
-    //         break;
-    //     case 'payment_method.attached':
-    //         const paymentMethod = event.data.object;
-    //         // Then define and call a method to handle the successful attachment of a PaymentMethod.
-    //         // handlePaymentMethodAttached(paymentMethod);
-    //         break;
-    //     default:
-    //         // Unexpected event type
-    //         console.log(`Unhandled event type ${event.type}.`);
-    // }
 
-    // Return a 200 response to acknowledge receipt of the event
     response.status(200).send();
-}
-
-//get full list of video
-exports.getFullVideosOfACourse = async (req, res, next) => {
-    const courseId = req.params.courseId;
-    const currentCourse = await Course.findById(courseId).populate('videoLists');
-    if (!currentCourse) {
-        return res.stus(404).json({ "message": "Course not found" });
-    }
-    return res.status(200).json({ "message": "Successed!", "courseData": currentCourse });
-}
-
-//watch a video base on courseId(both use for Admin)
-exports.watchVideoBaseOnCourseId = async (req, res, next) => {
-    //check if  Admin or owner or Student enroll can watch
-    const videoId = req.params.videoId;
-    const currentVideo = await Video.findById(videoId);
-    if (!currentVideo) {
-        return res.status(404).json({ "message": "Not found!" });
-    }
-    return res.status(200).json({ "message": "Retrieved success!", "courseVideoUrl": currentVideo });
 }
 
 

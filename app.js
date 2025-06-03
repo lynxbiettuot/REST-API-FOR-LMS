@@ -41,6 +41,7 @@ const managingCourseAdmin = require('./routes/admin/manageCourse.js');
 const managingInstructor = require('./routes/admin/manageInstructor.js');
 const managingStudent = require('./routes/admin/manageStudent.js');
 
+
 //authentication
 const authRoutes = require('./routes/auth/auth.js');
 
@@ -48,20 +49,13 @@ app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE');
     res.setHeader('Access-Control-Allow-Headers', 'Content-type, Authorization');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
     next();
 });
 
 app.get('/', async (req, res, next) => {
-    // const pw = "09012004";
-    // //hashing
-    // const hashedPassword = await bcrypt.hash(pw, 12);
-    // const newUser = new User({
-    //     email: "admin01@gmail.com",
-    //     password: hashedPassword,
-    //     role: "Admin"
-    // });
-    // await newUser.save();
-    return res.json({ "message": "Hello World" });
+    const courseList = await Course.find({ pendingStatus: "approved" }, 'title description price').populate({ path: 'instructor', select: 'name' });
+    return res.status(200).json({ "message": "Success", "coursesData": courseList });
 })
 //authenticate
 app.use('/auth', authRoutes);
@@ -76,7 +70,7 @@ app.use('/teacher/profile', teacherProfileRoutes);
 //student
 app.use("/student", studentRoutes);
 app.use("/student/profile", studentProfileRoutes)
-app.get('/student/checkout/success', async (req, res) => {
+app.get('/student/checkout/success', (req, res) => {
     res.send(`<h1>Thanh toán thành công!</h1><p>Session ID:</p>`);
 });
 
@@ -91,8 +85,8 @@ app.use("/admin/instructor", managingInstructor);
 app.use('/admin/student', managingStudent);
 
 mongoose.connect(MONGODB_URL).then(result => {
-    app.listen(8000, () => {
-        console.log('App is listening on port 8000');
+    app.listen(3000, () => {
+        console.log('App is listening on port 3000');
     })
 }).catch(err => {
     console.log(err);

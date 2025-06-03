@@ -25,13 +25,13 @@ const upload = multer({ storage: storage });
 router.get('/pending', isAuth, authorize(['handle:request']), courseManaging.getListPendingCourse);
 
 // handling pending course
-router.get('/pending/:instructorId/:courseId/approve', isAuth, authorize(['handle:request']), courseManaging.handlePendingCourseRequest);
+router.get('/pending/:courseId/approve', isAuth, authorize(['handle:request']), courseManaging.handlePendingCourseRequest);
 
 // reject pending course
 router.get('/pending/:instructorId/:courseId/reject', isAuth, authorize(['handle:request']), courseManaging.rejectPendingCourseRequest);
 
 //get full course
-router.get('/', isAuth, authorize(['course: read']), courseManaging.getFullCourse);
+router.get('/', isAuth, authorize(['course:read']), courseManaging.getFullCourse);
 
 //get a course
 router.get('/:courseId', isAuth, authorize(['course:read']), courseManaging.getCourseDetail);

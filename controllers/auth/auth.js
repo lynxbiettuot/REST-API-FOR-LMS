@@ -95,6 +95,7 @@ exports.signup = async (req, res, next) => {
         } else if (role === "Instructor") {
             const newInstructor = new Instructor({
                 name: fullName,
+                userId: newUser._id,
                 email: email,
                 password: hashedPassword,
                 phoneNumber: phoneNumber,
@@ -119,12 +120,19 @@ exports.login = async (req, res, next) => {
     const userEmail = req.body.email;
     const userPassword = req.body.password;
     console.log(userEmail);
+    console.log(userPassword);
+    if (userEmail === undefined || userPassword.length === undefined) {
+        return res.status(400).json({ "message": "Bad request" });
+    }
     //find in Instructor model
     let currentUser = await User.findOne({ email: userEmail.trim() });
     if (!currentUser) {
         return res.status(404).json({ "message": "Account not found!", "statusCode": 404 });
     }
     let isEqual = await bcrypt.compare(userPassword, currentUser.password);
+    if (!isEqual) {
+        return res.status(401).json({ "message": "Password or username is invalid, please try again!" });
+    }
     if (isEqual) {
         const accessToken = jwt.sign(
             {
@@ -148,7 +156,8 @@ exports.login = async (req, res, next) => {
         // Assigning refresh token in http-only cookie 
         res.cookie('jwt', refreshToken, {
             httpOnly: true,
-            sameSite: 'None', secure: false,
+            sameSite: 'none',
+            secure: false,
             maxAge: 24 * 60 * 60 * 1000
         });
         const role = currentUser.role;

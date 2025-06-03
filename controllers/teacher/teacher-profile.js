@@ -41,7 +41,7 @@ exports.changeInstructorProfile = async (req, res, next) => {
     const newName = req.body.name;
     const newAvatarUrl = req.file;
     const newDescription = req.body.bio;
-    const contactEmail = req.body['contact.email'];
+    const contactEmail = req.userEmail;
     const contactPhone = req.body['contact.phone'];
 
     try {

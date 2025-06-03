@@ -19,7 +19,10 @@ const instructorVerification = require('../../middleware/instructorVerification.
 //Autorization
 const authorize = require('../../middleware/rbac.js');
 
+//view profile
+router.get('/', isAuth, studentController.getStudentProfile);
+
 //update instructor profile
-router.post('/update-student-profile', isAuth, instructorVerification, authorize(['update:profile:own']), upload.single('uploaded_file'), studentController.changeStudentProfile);
+router.put('/update-student-profile', isAuth, instructorVerification, authorize(['update:profile:own']), upload.single('uploaded_file'), studentController.changeStudentProfile);
 
 module.exports = router;

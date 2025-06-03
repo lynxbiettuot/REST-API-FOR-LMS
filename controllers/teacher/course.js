@@ -4,6 +4,7 @@ const Course = require('../../models/courses.js');
 const Instruction = require('../../models/instruction.js');
 const Student = require('../../models/student.js');
 const Video = require('../../models/video.js');
+const Admin = require('../../models/admin.js');
 const Excercise = require('../../models/excercise.js');
 
 const { ObjectId } = require('mongodb');
@@ -61,10 +62,15 @@ exports.getFullCourse = async (req, res, next) => {
 //get a course by id
 exports.getCourse = async (req, res, next) => {
     const courseId = req.params.courseId;
-    const course = await Course.findById(courseId).populate("instructor").populate("videoLists");
+    const course = await Course.findById(courseId).populate("instructor").populate({ path: "videoLists", select: "title videoDescription" });
     if (!course) {
         return res.status(404).json({ "message": "Course is not found!" });
     }
+
+    if (course.pendingStatus === "pending") {
+        return res.status(403).json({ "message": "Course is in pending status" });
+    }
+
     res.status(200).json({ "statusCode": 200, "message": 'Completed retrieve', "courseData": course })
 }
 
@@ -91,6 +97,14 @@ exports.createCourse = async (req, res, next) => {
             { new: true }
         );
 
+        const adminId = "68219d1c22f09394ae396648";
+
+        await Admin.findByIdAndUpdate(
+            adminId,
+            { $push: { fullCourse: savedCourse._id } },
+            { new: true }
+        );
+
         res.status(200).json({ "statusCode": 200, "message": "Created!", "course": savedCourse });
     } catch (error) {
         console.log(error);
@@ -108,9 +122,10 @@ exports.updateCourse = async (req, res, next) => {
             return res.status(404).json({ "message": "Course is not found!" });
         }
         //another instructor change current instructor course
-        if (updateCourse.instructor.toString() !== req.instId.toString()) {
+        if (updateCourse.instructor === null || (updateCourse.instructor.toString() !== req.instId.toString())) {
             return res.status(401).json({ "message": "Not permitted!" });
         }
+        const data = req.body;
         const newTile = data.title;
         const description = data.description;
         const price = data.price;
@@ -133,13 +148,13 @@ exports.deleteCourse = async (req, res, next) => {
         //Add a step to find creator by courseId
 
         const deleteCourse = await Course.findById(courseId).populate("videoLists");
-        const currentVideoLists = deleteCourse.videoLists;
+
         if (!deleteCourse) {
             return res.status(404).json({ "message": "Course is not found!" });
         }
-
-        // another instructor change current instructor course
-        if (deleteCourse.instructor.toString() !== req.instId.toString()) {
+        const currentVideoLists = deleteCourse.videoLists;
+        //another instructor change current instructor course
+        if (deleteCourse.instructor === null || (deleteCourse.instructor.toString() !== req.instId.toString())) {
             return res.status(401).json({ "message": "Not permitted!" });
         }
 
@@ -147,18 +162,20 @@ exports.deleteCourse = async (req, res, next) => {
         const bucketName = 'videosbucket-01';
 
         //delete all videos of a course
-        currentVideoLists.forEach(async (currentVideo) => {
-            const keyObject = currentVideo.urlVideo.split('.amazonaws.com/')[1];
-            //on aws
-            await handleDeleteFile(req, bucketName, keyObject);
-            //on Schema Video
-            await Video.deleteOne({ _id: currentVideo._id });
-            //on course array
-            await Course.updateOne(
-                { _id: courseId },
-                { $pull: { videoLists: currentVideo._id } }
-            );
-        })
+        if (currentVideoLists.length > 0) {
+            currentVideoLists.forEach(async (currentVideo) => {
+                const keyObject = currentVideo.urlVideo.split('.amazonaws.com/')[1];
+                //on aws
+                await handleDeleteFile(req, bucketName, keyObject);
+                //on Schema Video
+                await Video.deleteOne({ _id: currentVideo._id });
+                //on course array
+                await Course.updateOne(
+                    { _id: courseId },
+                    { $pull: { videoLists: currentVideo._id } }
+                );
+            })
+        }
 
         //delete course in Instruction
         await Instruction.updateMany(
@@ -173,9 +190,18 @@ exports.deleteCourse = async (req, res, next) => {
         );
         await Course.findByIdAndDelete(courseId);
 
+        const adminId = "68219d1c22f09394ae396648";
+
+        await Admin.findByIdAndUpdate(
+            adminId,
+            { $pull: { fullCourse: courseId } },
+            { new: true }
+        );
+
         res.status(200).json({ message: "Deleted" });
     } catch (error) {
-        res.status(500).json({ message: "Lỗi server", error });
+        console.log(error);
+        res.status(500).json({ message: "Internal Server", error });
     }
 }
 
@@ -188,6 +214,10 @@ exports.createAVideo = async (req, res, next) => {
         return res.status(401).json({ "message": "Not permitted to add video" });
     }
 
+    if (courseOwnerId.pendingStatus === "pending") {
+        return res.status(403).json({ "message": "Your course is in pending status" });
+    }
+
     const titleVideo = req.body.titleVideo;
     const videoURL = req.file;
     const videoDescription = req.body.videoDescription;
@@ -198,7 +228,6 @@ exports.createAVideo = async (req, res, next) => {
         await handleUpdateFile(req, bucketName, currentTime);
         const tailUrl = `${currentTime}-${req.file.originalname}`;
         const videoUrl = `https://videosbucket-01.s3.ap-southeast-1.amazonaws.com/${tailUrl}`;
-        const videoLists = await Course.findById(courseId).videoLists;
         const currentVideo = new Video({
             title: titleVideo,
             urlVideo: videoUrl,
@@ -224,96 +253,112 @@ exports.createAVideo = async (req, res, next) => {
 //get full list of video
 exports.getFullVideosOfACourse = async (req, res, next) => {
     const courseId = req.params.courseId;
-    const currentCourse = await Course.findById(courseId).populate('videoLists');
+    const currentCourse = await Course.findById(courseId).populate({ path: 'videoLists', select: "title videoDescription" });
+
     if (!currentCourse) {
         return res.stus(404).json({ "message": "Course not found" });
     }
-    return res.status(200).json({ "message": "Successed!", "courseData": currentCourse });
+
+    const listOfVideo = currentCourse.videoLists;
+    return res.status(200).json({ "message": "Successed!", "courseData": listOfVideo });
 }
 
 //watch a video base on courseId(both use for Admin)
 exports.watchVideoBaseOnCourseId = async (req, res, next) => {
     //check if  Admin or owner or Student enroll can watch
     const videoId = req.params.videoId;
+    const courseId = req.params.courseId;
+    const currentCourse = await Course.findById(courseId);
+    if (currentCourse.instructor === null || currentCourse.instructor.toString() !== req.instId.toString()) {
+        return res.status(403).json({ "message": "you're not permitted to watch video" });
+    }
+
     const currentVideo = await Video.findById(videoId);
     if (!currentVideo) {
         return res.status(404).json({ "message": "Not found!" });
     }
-    return res.status(200).json({ "message": "Retrieved success!", "courseVideoUrl": currentVideo });
+    return res.status(200).json({ "message": "Instructor retrieved success!", "courseVideoUrl": currentVideo });
 }
 
 //edit video base on courseId(both use for Admin)
 exports.editAVideo = async (req, res, next) => {
-    const videoId = req.params.videoId;
-    const courseId = req.params.courseId;
-    const currentCourse = await Course.findById(courseId);
-    if (currentCourse.instructor.toString() !== req.instId.toString()) {
-        return res.status(401).json({ "message": "Not permitted to edit video" });
+    try {
+        const videoId = req.params.videoId;
+        const courseId = req.params.courseId;
+        const currentCourse = await Course.findById(courseId);
+        //another instructor change current instructor course
+        if (currentCourse.instructor === null || (currentCourse.instructor.toString() !== req.instId.toString())) {
+            return res.status(401).json({ "message": "Not permitted!" });
+        }
+
+        //new information to edit video
+        const titleVideo = req.body.titleVideo;
+        const videoURL = req.file;
+        const videoDescription = req.body.videoDescription;
+
+        const currentVideo = await Video.findById(videoId);
+        if (!currentVideo) {
+            return res.status(404).json({ "message": "Not found!" });
+        }
+        let videoUrl = undefined;
+        if (videoURL) {
+            const bucketName = 'videosbucket-01';
+
+            //delete item on bucket
+            const keyObject = currentVideo.urlVideo.split('.amazonaws.com/')[1];
+            const currentTime = Date.now();
+            handleDeleteFile(req, bucketName, keyObject);
+
+            //re-upload new video
+            handleUpdateFile(req, bucketName, currentTime);
+
+            const tailUrl = `${currentTime}-${req.file.originalname}`;
+            videoUrl = `https://videosbucket-01.s3.ap-southeast-1.amazonaws.com/${tailUrl}`;
+        }
+        currentVideo.title = titleVideo;
+        currentVideo.videoDescription = videoDescription;
+        if (videoUrl !== undefined) {
+            currentVideo.urlVideo = videoUrl;
+        }
+        currentVideo.uploadDate = Date.now();
+        const updateData = await currentVideo.save();
+        res.status(200).json({ "message": "Updated", "videoData": updateData })
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ "message": "Internal server" });
     }
-
-    //new information to edit video
-    const titleVideo = req.body.titleVideo;
-    const videoURL = req.file;
-    const videoDescription = req.body.videoDescription;
-
-    const currentVideo = await Video.findById(videoId);
-    if (!currentVideo) {
-        return res.status(404).json({ "message": "Not found!" });
-    }
-    let videoUrl = undefined;
-    if (videoURL) {
-        const bucketName = 'videosbucket-01';
-
-        //delete item on bucket
-        const keyObject = currentVideo.urlVideo.split('.amazonaws.com/')[1];
-        const currentTime = Date.now();
-        handleDeleteFile(req, bucketName, keyObject);
-
-        //re-upload new video
-        handleUpdateFile(req, bucketName, currentTime);
-
-        const tailUrl = `${currentTime}-${req.file.originalname}`;
-        videoUrl = `https://videosbucket-01.s3.ap-southeast-1.amazonaws.com/${tailUrl}`;
-    }
-    currentVideo.title = titleVideo;
-    currentVideo.videoDescription = videoDescription;
-    if (videoUrl !== undefined) {
-        currentVideo.urlVideo = videoUrl;
-    }
-    currentVideo.uploadDate = Date.now();
-    const updateData = await currentVideo.save();
-    res.status(200).json({ "message": "Updated", "videoData": updateData })
 }
 
 //delete video base on courseId(both use for Admin)
 exports.deleteAVideo = async (req, res, next) => {
-    const videoId = req.params.videoId;
-    const courseId = req.params.courseId;
-    const currentCourse = await Course.findById(courseId);
-    if (currentCourse.instructor.toString() !== req.instId.toString()) {
-        return res.status(401).json({ "message": "Not permitted to edit video" });
-    }
-
-    const currentVideo = await Video.findById(videoId);
-    //delete in course array
-    await Course.updateOne(
-        { _id: courseId }, // Lọc theo ID khóa học
-        { $pull: { videoLists: videoId } } // Xóa videoId khỏi mảng videoLists
-    );
-    if (!currentVideo) {
-        return res.status(404).json({ "message": "Not found!" });
-    }
-    const bucketName = 'videosbucket-01';
-
-    //delete item on bucket
-    const keyObject = currentVideo.urlVideo.split('.amazonaws.com/')[1];
     try {
+        const videoId = req.params.videoId;
+        const courseId = req.params.courseId;
+        const currentCourse = await Course.findById(courseId);
+        if (currentCourse.instructor === null || currentCourse.instructor.toString() !== req.instId.toString()) {
+            return res.status(401).json({ "message": "Not permitted to delete video" });
+        }
+
+        const currentVideo = await Video.findById(videoId);
+        console.log(currentVideo);
+        //delete in course array
+        await Course.updateOne(
+            { _id: courseId },
+            { $pull: { videoLists: videoId } }
+        );
+        if (!currentVideo) {
+            return res.status(404).json({ "message": "Not found!" });
+        }
+        const bucketName = 'videosbucket-01';
+
+        //delete item on bucket
+        const keyObject = currentVideo.urlVideo.split('.amazonaws.com/')[1];
         //delete on AWS
         handleDeleteFile(req, bucketName, keyObject);
         await Video.deleteOne({ _id: videoId });
         return res.status(200).json({ "message": "Deleted!" })
     } catch (err) {
-        console.log(error);
+        console.log(err);
         res.status(500).json({ "message": "Interal error" });
     }
 }
@@ -322,10 +367,11 @@ exports.deleteAVideo = async (req, res, next) => {
 exports.uploadExcercisePDF = async (req, res, next) => {
     const courseId = req.params.courseId;
     const excerciseURL = req.file;
+    const title = req.body.title
     const courseOwnerId = await Course.findById(courseId);
     const videoId = req.params.videoId;
 
-    if (courseOwnerId.instructor.toString() !== req.instId.toString()) {
+    if (courseOwnerId.instructor === null || courseOwnerId.instructor.toString() !== req.instId.toString()) {
         return res.status(401).json({ "message": "Not permitted to add excercise" });
     }
     const bucketName = 'imagesbucket-01';
@@ -334,9 +380,16 @@ exports.uploadExcercisePDF = async (req, res, next) => {
         await handleUpdateFile(req, bucketName, currentTime);
         const tailUrl = `${currentTime}-${req.file.originalname}`;
         const excerciseUrl = `https://imagesbucket-01.s3.ap-southeast-1.amazonaws.com/${tailUrl}`;
+        const newExcercise = new Excercise({
+            title: title,
+            excerciseUrl: excerciseUrl
+        });
+
+        await newExcercise.save();
+
         await Video.findByIdAndUpdate(
             videoId,
-            { excerciseUrl: excerciseUrl },
+            { excerciseUrl: newExcercise._id },
             { new: true }
         );
         return res.status(200).json({ "message": "Upload successed!" });
@@ -348,15 +401,54 @@ exports.uploadExcercisePDF = async (req, res, next) => {
 
 //get excercise PDF
 exports.getExcercisePDF = async (req, res, next) => {
+    try {
+        const courseId = req.params.courseId;
+        const videoId = req.params.videoId;
+        const currentCourse = await Course.findById(courseId);
+        if (currentCourse.instructor === null || currentCourse.instructor.toString() !== req.instId.toString()) {
+            return res.status(403).json({ "message": "you're not permitted to get excercise" });
+        }
+        const currentVideo = await Video.findById(videoId).populate({ path: 'excerciseUrl', select: "title excerciseUrl" });
+
+        if (!currentVideo) {
+            return res.status(404).json({ "message": "Not found!" });
+        }
+        const excerciseUrl = currentVideo.excerciseUrl;
+        if (!excerciseUrl) {
+            return res.status(404).json({ "message": "Not found!" });
+        }
+        return res.status(200).json({ "message": "Retrieved success!", "excerciseUrl": excerciseUrl });
+    } catch (err) {
+        console.log(err);
+        return res.status(500).json({ "message": "Internal server!" });
+    }
+}
+
+//get list of student in a course
+exports.getListStudent = async (req, res, next) => {
     const courseId = req.params.courseId;
-    const videoId = req.params.videoId;
-    const currentVideo = await Video.findById(videoId);
-    if (!currentVideo) {
-        return res.status(404).json({ "message": "Not found!" });
+    const instructorId = req.instId;
+    const currentCourse = await Course.findById(courseId).populate('student');
+    if (currentCourse.instructor === null || currentCourse.instructor.toString() !== instructorId) {
+        return res.status(403).json({ "message": "Not permitted to get list of student" });
     }
-    const excerciseUrl = currentVideo.excerciseUrl;
-    if (!excerciseUrl) {
-        return res.status(404).json({ "message": "Not found!" });
+    const listStudent = currentCourse.student;
+    return res.status(200).json({ "message": "Success!", "listStudent": listStudent });
+}
+
+//delete a sudent from a course
+exports.deleteStudent = async (req, res, next) => {
+    const studentId = req.params.studentId;
+    const courseId = req.params.courseId;
+    const instructorId = req.instId;
+    const currentCourse = await Course.findById(courseId);
+    if (currentCourse.instructor === null || currentCourse.instructor.toString() !== instructorId) {
+        return res.status(403).json({ "message": "Not permitted to get list of student" });
     }
-    return res.status(200).json({ "message": "Retrieved success!", "excerciseUrl": excerciseUrl });
+    await Course.updateOne(
+        { _id: courseId },
+        { $pull: { students: studentId } }
+    );
+
+    return res.status(200).json({ message: "Student removed from course successfully" });
 }

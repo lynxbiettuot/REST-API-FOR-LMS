@@ -47,10 +47,16 @@ router.put('/teaching/:courseId/edit/:videoId', isAuth, instructorVerification, 
 //delete a video
 router.delete('/teaching/:courseId/delete/:videoId', isAuth, instructorVerification, authorize(['course:delete:video']), courseController.deleteAVideo);
 
-//post excercis PDF
-router.post('/teaching/:courseId/excercise/:videoId', isAuth, instructorVerification, upload.single('uploaded_file'), courseController.uploadExcercisePDF);
+//post excercise PDF
+router.post('/teaching/:courseId/excercise/:videoId/create', isAuth, instructorVerification, upload.single('uploaded_file'), courseController.uploadExcercisePDF);
 
-//upload excercis PDF
-router.get('/teaching/:courseId/excercise:videoId', isAuth, instructorVerification, courseController.getExcercisePDF);
+//get excercis PDF
+router.get('/teaching/:courseId/excercise/:videoId', isAuth, instructorVerification, courseController.getExcercisePDF);
+
+//get full Student in course
+router.get('/teaching/:courseId/students', isAuth, instructorVerification, courseController.getListStudent)
+
+//delete a student in a course
+router.delete('/teaching/:courseId/delete/:studentId', isAuth, instructorVerification, courseController.deleteStudent);
 
 module.exports = router;

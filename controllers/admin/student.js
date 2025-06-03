@@ -7,6 +7,9 @@ const Instruction = require('../../models/instruction.js');
 const Student = require('../../models/student.js');
 const User = require('../../models/users.js');
 
+//bcrypt
+const bcrypt = require('bcrypt');
+
 //get full list of student
 exports.getFullStudent = async (req, res, next) => {
     try {
@@ -25,7 +28,7 @@ exports.getFullStudent = async (req, res, next) => {
 exports.getStudent = async (req, res, next) => {
     try {
         const studentId = req.params.studentId;
-        const currentStudent = await Student.findById(studentId);
+        const currentStudent = await Student.findById(studentId).populate('course');
         if (!currentStudent) {
             return res.status(404).json({ "message": "Not found!" });
         }
@@ -45,10 +48,11 @@ exports.createStudent = async (req, res, next) => {
         const newEmail = req.body.email;
         const newPassword = req.body.password;
         const newCourse = [];
+        const hashedPassword = await bcrypt.hash(newPassword, 12);
         const newStudent = new Student({
             name: newName,
             email: newEmail,
-            password: newPassword,
+            password: hashedPassword,
             course: newCourse
         });
 
@@ -83,6 +87,7 @@ exports.editStudent = async (req, res, next) => {
         const newName = req.body.name;
         const newEmail = req.body.email;
         const newPassword = req.body.password;
+        const hashedPassword = await bcrypt.hash(newPassword, 12);
 
         const updateStudent = await Student.findById(studentId);
         if (!updateStudent) {
@@ -98,13 +103,13 @@ exports.editStudent = async (req, res, next) => {
 
         updateStudent.name = newName;
         updateStudent.email = newEmail;
-        updateStudent.password = newPassword;
+        updateStudent.password = hashedPassword;
 
         //save to Student Model
         await updateStudent.save();
 
         currentUser.email = newEmail;
-        currentUser.password = newPassword;
+        currentUser.password = hashedPassword;
         await currentUser.save();
 
         res.status(200).json({ "message": "created", "statusCode": 200, "updateStudent": updateStudent });

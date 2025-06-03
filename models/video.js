@@ -24,7 +24,8 @@ const videoSchema = new Schema({
         required: true
     },
     excerciseUrl: {
-        type: String
+        type: Schema.Types.ObjectId,
+        ref: 'Excercise'
     }
 });
 
