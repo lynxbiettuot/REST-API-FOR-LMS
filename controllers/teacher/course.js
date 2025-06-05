@@ -165,6 +165,9 @@ exports.deleteCourse = async (req, res, next) => {
         if (currentVideoLists.length > 0) {
             currentVideoLists.forEach(async (currentVideo) => {
                 const keyObject = currentVideo.urlVideo.split('.amazonaws.com/')[1];
+                //delete excercise
+                const excerciseId = currentVideo.excerciseUrl;
+                await Excercise.findOneAndDelete({ _id: excerciseId });
                 //on aws
                 await handleDeleteFile(req, bucketName, keyObject);
                 //on Schema Video
@@ -341,6 +344,12 @@ exports.deleteAVideo = async (req, res, next) => {
 
         const currentVideo = await Video.findById(videoId);
         console.log(currentVideo);
+        //delete excercise in video
+        const excerciseId = currentVideo.excerciseUrl;
+        if (excerciseId) {
+            await Excercise.findOneAndDelete({ _id: excerciseId });
+        }
+
         //delete in course array
         await Course.updateOne(
             { _id: courseId },
@@ -365,18 +374,18 @@ exports.deleteAVideo = async (req, res, next) => {
 
 //upload excercise PDF
 exports.uploadExcercisePDF = async (req, res, next) => {
-    const courseId = req.params.courseId;
-    const excerciseURL = req.file;
-    const title = req.body.title
-    const courseOwnerId = await Course.findById(courseId);
-    const videoId = req.params.videoId;
-
-    if (courseOwnerId.instructor === null || courseOwnerId.instructor.toString() !== req.instId.toString()) {
-        return res.status(401).json({ "message": "Not permitted to add excercise" });
-    }
-    const bucketName = 'imagesbucket-01';
-    const currentTime = Date.now();
     try {
+        const courseId = req.params.courseId;
+        const excerciseURL = req.file;
+        const title = req.body.title
+        const courseOwnerId = await Course.findById(courseId);
+        const videoId = req.params.videoId;
+
+        if (courseOwnerId.instructor === null || courseOwnerId.instructor.toString() !== req.instId.toString()) {
+            return res.status(401).json({ "message": "Not permitted to add excercise" });
+        }
+        const bucketName = 'imagesbucket-01';
+        const currentTime = Date.now();
         await handleUpdateFile(req, bucketName, currentTime);
         const tailUrl = `${currentTime}-${req.file.originalname}`;
         const excerciseUrl = `https://imagesbucket-01.s3.ap-southeast-1.amazonaws.com/${tailUrl}`;

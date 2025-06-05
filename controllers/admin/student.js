@@ -28,7 +28,7 @@ exports.getFullStudent = async (req, res, next) => {
 exports.getStudent = async (req, res, next) => {
     try {
         const studentId = req.params.studentId;
-        const currentStudent = await Student.findById(studentId).populate('course');
+        const currentStudent = await Student.findById(studentId).populate({ path: 'course', select: 'title description' });
         if (!currentStudent) {
             return res.status(404).json({ "message": "Not found!" });
         }
@@ -49,12 +49,11 @@ exports.createStudent = async (req, res, next) => {
         const newPassword = req.body.password;
         const newCourse = [];
         const hashedPassword = await bcrypt.hash(newPassword, 12);
-        const newStudent = new Student({
-            name: newName,
-            email: newEmail,
-            password: hashedPassword,
-            course: newCourse
-        });
+
+        const existUser = await User.find({ email: newEmail });
+        if (existUser) {
+            return res.status(401).json({ "message": "User is already existed" });
+        }
 
         //save to User model
         const newUser = new User({
@@ -64,6 +63,15 @@ exports.createStudent = async (req, res, next) => {
         })
 
         await newUser.save();
+
+        const newStudent = new Student({
+            name: newName,
+            userId: newUser._id,
+            email: newEmail,
+            password: hashedPassword,
+            course: newCourse
+        });
+
         //save to Student Model
         await newStudent.save();
 
@@ -88,6 +96,11 @@ exports.editStudent = async (req, res, next) => {
         const newEmail = req.body.email;
         const newPassword = req.body.password;
         const hashedPassword = await bcrypt.hash(newPassword, 12);
+
+        const existUser = await User.find({ email: newEmail });
+        if (existUser) {
+            return res.status(401).json({ "message": "User is already existed" });
+        }
 
         const updateStudent = await Student.findById(studentId);
         if (!updateStudent) {

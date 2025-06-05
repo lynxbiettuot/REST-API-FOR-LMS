@@ -20,6 +20,9 @@ router.get('/pending/:instructorId/approve', isAuth, authorize(['handle:request'
 // handling pending when Instructor registe
 router.get('/pending/:instructorId/reject', isAuth, authorize(['handle:request']), instructorManaging.rejectPendingRequest);
 
+//attach an instructor to a course
+router.put('/attach/:courseId/', isAuth, authorize(['handle:attach']), instructorManaging.attachInstructor);
+
 //get full instruction
 router.get('/', isAuth, authorize(['user:read']), instructorManaging.getFullInstructor);
 
@@ -33,6 +36,6 @@ router.post('/create-instructor', isAuth, authorize(['user:create']), instructor
 router.put('/update-instructor/:instructorId', isAuth, authorize(['user:update']), instructorManaging.editAnInstruction);
 
 //delete an instruction
-router.delete('/delete-instructor/:instructorId', authorize(['user:delete']), isAuth, instructorManaging.deleteInstructor);
+router.delete('/delete-instructor/:instructorId', isAuth, authorize(['user:delete']), instructorManaging.deleteInstructor);
 
 module.exports = router;

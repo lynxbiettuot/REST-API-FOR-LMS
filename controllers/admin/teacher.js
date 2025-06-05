@@ -9,10 +9,30 @@ const User = require('../../models/users.js');
 
 const bcrypt = require('bcrypt');
 
+//attach an instructor to a course with instructor = null
+exports.attachInstructor = async (req, res, next) => {
+    const courseId = req.params.courseId;
+    const instructorId = req.body.instructorId;
+    if (!req.adminId) {
+        return res.status(403).json({ "message": "Forbidden to modify course!" });
+    }
+
+    const currentCourse = await Course.findById(courseId);
+    const currentInstructor = await Instruction.findById(instructorId);
+    if (currentCourse.instructor === null) {
+        return res.status(403).json({ "message": "Course is already had instructor" });
+    }
+    currentInstructor.createdCourse.push(courseId);
+    currentCourse.instructor = instructorId;
+    await currentCourse.save();
+    await currentInstructor.save();
+    return res.status(200).json({ "message": "Complete updated" });
+}
+
 //get full Instructor
 exports.getFullInstructor = async (req, res, next) => {
     try {
-        const listInstruction = await Instruction.find();
+        const listInstruction = await Instruction.find().populate({ path: 'createdCourse', select: 'title' });
         res.status(200).json({ "message": "Completed retrieved", "listInstructor": listInstruction });
     } catch (error) {
         console.log(error);
@@ -45,11 +65,21 @@ exports.addNewInstructor = async (req, res, next) => {
         const newCourses = [];
         const adminId = "68219d1c22f09394ae396648";
         const hashedPassword = await bcrypt.hash(password, 12);
-        const newInstructor = new Instruction({
-            name: name,
+
+        //save to user model
+        const newUser = new User({
             email: email,
             password: hashedPassword,
-            createdCourse: newCourses
+            role: "Instructor"
+        })
+
+        const newInstructor = new Instruction({
+            name: name,
+            userId: newUser._id,
+            email: email,
+            password: hashedPassword,
+            createdCourse: newCourses,
+            pendingStatus: "approved"
         });
         //save to Instruction model
         await newInstructor.save();
@@ -59,13 +89,6 @@ exports.addNewInstructor = async (req, res, next) => {
             { $push: { instructor: newInstructor._id } },
             { new: true }
         );
-
-        //save to user model
-        const newUser = new User({
-            email: email,
-            password: password,
-            role: "Instructor"
-        })
         await newUser.save();
 
         res.status(201).json({ "statusCode": 201, "message": "Created", "data": newInstructor });
@@ -156,10 +179,13 @@ exports.deleteInstructor = async (req, res, next) => {
 //get instructor pending request
 exports.getListPendingInstructor = async (req, res, next) => {
     const currentInstructors = await Instruction.find();
-    const pendingInstructor = currentInstructors.forEach((instructor) => {
-        return instructor.pendingStatus === "pending";
+    let instArray = [];//to push instructor with pending status
+    currentInstructors.forEach((instructor) => {
+        if (instructor.pendingStatus === "pending") {
+            instArray.push(instructor);
+        }
     })
-    res.status(200).json({ "message": "Successed!", "pendingInstructor": pendingInstructor });
+    res.status(200).json({ "message": "Successed!", "pendingInstructor": instArray });
 }
 
 //handle instructor pending approve
@@ -181,6 +207,9 @@ exports.rejectPendingRequest = async (req, res, next) => {
     if (!currentInstructor) {
         return res.status(404).json({ "message": "Instructor is not found!" });
     }
+    if (currentInstructor.pendingStatus === "approved") {
+        return res.status(403).json({ "message": "Instructor is aready approved" });
+    }
     const userInstructorId = currentInstructor.userId;
     await Instruction.findByIdAndDelete(instructorId);
     //refer to instructor account on user model and delete
@@ -190,7 +219,7 @@ exports.rejectPendingRequest = async (req, res, next) => {
     //delete on admin
     await Admin.findByIdAndUpdate(
         adminId,
-        { $pull: { student: dataReply._id } },
+        { $pull: { instructor: instructorId } },
         { new: true }
     );
     res.status(200).json({ "message": "Instructor rejected your request!" });

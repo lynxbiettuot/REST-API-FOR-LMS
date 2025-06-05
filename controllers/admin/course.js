@@ -5,6 +5,7 @@ const Admin = require('../../models/admin.js');
 const Instruction = require('../../models/instruction.js');
 const Student = require('../../models/student.js');
 const Video = require('../../models/video.js');
+const Excercise = require('../../models/excercise.js');
 
 //aws
 const {
@@ -49,21 +50,26 @@ async function handleDeleteFile(req, bucketName, videoTime) {
 }
 
 //getFull Course
-exports.getFullCourse = (req, res, next) => {
-    Course.find().then(courses => {
-        console.log(courses);
-        res.json({ "statusCode": 200, "message": 'Completed retrieve', "courses": courses })
-    })
+exports.getFullCourse = async (req, res, next) => {
+    if (!req.adminId) {
+        return res.status(403).json({ "message": "Not permitted to get full course" });
+    }
+    const courses = await Course.find({ pendingStatus: "approved" }, { title: 1, description: 1, price: 1 }).populate({ path: 'instructor', select: 'name' });
+    res.json({ "statusCode": 200, "message": 'Completed retrieve', "courses": courses })
 }
 
 //get a course detail
-exports.getCourseDetail = (req, res, next) => {
-    const courseId = req.params.courseId;
-    Course.findById(courseId).then(result => {
-        res.json({ "statusCode": 200, "message": "selected", "course": result });
-    }).catch(err => {
-        console.log(err);
-    })
+exports.getCourseDetail = async (req, res, next) => {
+    try {
+        const courseId = req.params.courseId;
+        const currentCourse = await Course.findById(courseId).populate({ path: 'instructor', select: 'name description' }).populate({ path: 'videoLists', select: 'title videoDescription' });
+        if (!currentCourse) {
+            return res.status(404).json({ "message": "Course is not found!" });
+        }
+        res.json({ "statusCode": 200, "message": "selected", "course": currentCourse });
+    } catch (err) {
+        return res.status(500).json({ "message": "Internal server" });
+    }
 }
 
 //create a course
@@ -71,7 +77,7 @@ exports.createCourse = async (req, res, next) => {
     try {
         //only one Admin
         if (!req.adminId) {
-            return res.status(401).json({ "message": "Admin is not exist to create course!" });
+            return res.status(401).json({ "message": "You are not exist to create course!" });
         }
         const adminId = req.adminId;
 
@@ -124,15 +130,78 @@ exports.updateCourse = async (req, res, next) => {
     }
 }
 
+//delete a course
+exports.deleteCourse = async (req, res, next) => {
+    try {
+        const courseId = req.params.courseId;
+        //Add a step to find creator by courseId
+
+        const deleteCourse = await Course.findById(courseId).populate("videoLists");
+        const currentVideoLists = deleteCourse.videoLists;
+        if (!deleteCourse) {
+            return res.status(404).json({ "message": "Course is not found!" });
+        }
+
+        // another instructor change current instructor course
+        if (req.userRole !== "Admin") {
+            return res.status(401).json({ "message": "Not permitted!" });
+        }
+
+        //delete all video of a course before delete this course
+        const bucketName = 'videosbucket-01';
+
+        //delete all videos of a course
+        currentVideoLists.forEach(async (currentVideo) => {
+            const keyObject = currentVideo.urlVideo.split('.amazonaws.com/')[1];
+            //excercise
+            const excerciseId = currentVideo.excerciseUrl;
+            if (excerciseId) {
+                await Excercise.findOneAndDelete({ _id: excerciseId });
+            }
+            //on aws
+            await handleDeleteFile(req, bucketName, keyObject);
+            //on Schema Video
+            await Video.deleteOne({ _id: currentVideo._id });
+            //on course array
+            await Course.updateOne(
+                { _id: courseId },
+                { $pull: { videoLists: currentVideo._id } }
+            );
+        })
+
+        //delete course in Instruction
+        await Instruction.updateMany(
+            { createdCourse: courseId },
+            { $pull: { createdCourse: courseId } }
+        );
+
+        //delete course in Student if enrolled
+        await Student.updateMany(
+            { course: courseId },
+            { $pull: { course: courseId } }
+        );
+        await Course.findByIdAndDelete(courseId);
+
+        const adminId = "68219d1c22f09394ae396648";
+
+        await Admin.findByIdAndUpdate(
+            adminId,
+            { $pull: { fullCourse: courseId } },
+            { new: true }
+        );
+
+        res.status(200).json({ message: "Deleted" });
+    } catch (error) {
+        res.status(500).json({ message: "Server error!", error });
+    }
+}
+
 //Admin edit a video in a course base on course Id
 exports.editAVideo = async (req, res, next) => {
     const videoId = req.params.videoId;
     const courseId = req.params.courseId;
     const currentCourse = await Course.findById(courseId);
-    // if (req.userRole != "Admin" && currentCourse.instructor.toString() !== req.instId.toString()) {
-    //     return res.status(401).json({ "message": "Not permitted to edit video" });
-    // }
-    if (req.userRole === "Admin" || currentCourse.instructor.toString() === req.instId.toString()) {
+    if (req.userRole === "Admin") {
         const videoId = req.params.videoId;
         //new information to edit video
         const titleVideo = req.body.titleVideo;
@@ -178,12 +247,17 @@ exports.deleteAVideo = async (req, res, next) => {
     //     return res.status(401).json({ "message": "Not permitted to edit video" });
     // }
 
-    if (req.userRole === "Admin" || currentCourse.instructor.toString() === req.instId.toString()) {
+    if (req.userRole === "Admin") {
         const currentVideo = await Video.findById(videoId);
+
+        const excerciseId = currentVideo.excerciseUrl;
+
+        await Excercise.findOneAndDelete({ _id: excerciseId });
+
         //delete in course array
         await Course.updateOne(
-            { _id: courseId }, // Lọc theo ID khóa học
-            { $pull: { videoLists: videoId } } // Xóa videoId khỏi mảng videoLists
+            { _id: courseId },
+            { $pull: { videoLists: videoId } }
         );
         if (!currentVideo) {
             return res.status(404).json({ "message": "Not found!" });
@@ -198,72 +272,11 @@ exports.deleteAVideo = async (req, res, next) => {
             await Video.deleteOne({ _id: videoId });
             return res.status(200).json({ "message": "Deleted!" })
         } catch (err) {
-            console.log(error);
+            console.log(err);
             res.status(500).json({ "message": "Interal error" });
         }
     }
     return res.status(401).json({ "message": "Not permitted to delete video" });
-}
-
-//delete a course
-exports.deleteCourse = async (req, res, next) => {
-    try {
-        const courseId = req.params.courseId;
-        //Add a step to find creator by courseId
-
-        const deleteCourse = await Course.findById(courseId).populate("videoLists");
-        const currentVideoLists = deleteCourse.videoLists;
-        if (!deleteCourse) {
-            return res.status(404).json({ "message": "Course is not found!" });
-        }
-
-        // another instructor change current instructor course
-        if (req.userRole !== "Admin") {
-            return res.status(401).json({ "message": "Not permitted!" });
-        }
-
-        //delete all video of a course before delete this course
-        const bucketName = 'videosbucket-01';
-
-        //delete all videos of a course
-        currentVideoLists.forEach(async (currentVideo) => {
-            const keyObject = currentVideo.urlVideo.split('.amazonaws.com/')[1];
-            //on aws
-            await handleDeleteFile(req, bucketName, keyObject);
-            //on Schema Video
-            await Video.deleteOne({ _id: currentVideo._id });
-            //on course array
-            await Course.updateOne(
-                { _id: courseId },
-                { $pull: { videoLists: currentVideo._id } }
-            );
-        })
-
-        //delete course in Instruction
-        await Instruction.updateMany(
-            { createdCourse: courseId },
-            { $pull: { createdCourse: courseId } }
-        );
-
-        //delete course in Student if enrolled
-        await Student.updateMany(
-            { course: courseId },
-            { $pull: { course: courseId } }
-        );
-        await Course.findByIdAndDelete(courseId);
-
-        const adminId = "68219d1c22f09394ae396648";
-
-        await Admin.findByIdAndUpdate(
-            adminId,
-            { $pull: { fullCourse: courseId } },
-            { new: true }
-        );
-
-        res.status(200).json({ message: "Deleted" });
-    } catch (error) {
-        res.status(500).json({ message: "Server error!", error });
-    }
 }
 
 //get list of pending course
@@ -292,6 +305,9 @@ exports.rejectPendingCourseRequest = async (req, res, next) => {
     const currentCourse = await Course.findById(courseId);
     if (!currentCourse) {
         return res.status(404).json({ "message": "Course is not found!" });
+    }
+    if (currentCourse.pendingStatus === "approved") {
+        return res.status(403).json({ "message": "Course is already approved!" });
     }
     await Course.findByIdAndDelete(courseId);
     await Instruction.findByIdAndUpdate(
